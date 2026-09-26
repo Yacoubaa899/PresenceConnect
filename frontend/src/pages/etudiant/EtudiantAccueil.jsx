@@ -10,6 +10,8 @@ export default function EtudiantAccueil() {
 
     const [fichier, setFichier] = useState(null);
     const [commentaire, setCommentaire] = useState("");
+    const [absencesAJustifier, setAbsencesAJustifier] = useState([]);
+    const [sessionChoisie, setSessionChoisie] = useState("");
     const [envoiEnCours, setEnvoiEnCours] = useState(false);
     const [succes, setSucces] = useState(null);
 
@@ -20,14 +22,16 @@ export default function EtudiantAccueil() {
     async function charger() {
         setChargement(true);
         try {
-            const [session, statistiques, mesJustificatifs] = await Promise.all([
+            const [session, statistiques, mesJustificatifs, absences] = await Promise.all([
                 apiFetch("/sessions/ouverte-pour-moi"),
                 apiFetch("/mes-statistiques"),
                 apiFetch("/mes-justificatifs"),
+                apiFetch("/mes-absences-a-justifier"),
             ]);
             setSessionOuverte(session);
             setStats(statistiques);
             setJustificatifs(mesJustificatifs);
+            setAbsencesAJustifier(absences);
         } catch (e) {
             setErreur(e.message);
         } finally {
@@ -37,18 +41,20 @@ export default function EtudiantAccueil() {
 
     async function envoyerJustificatif(e) {
         e.preventDefault();
-        if (!fichier) return;
+        if (!fichier || !sessionChoisie) return;
         setEnvoiEnCours(true);
         setErreur(null);
         setSucces(null);
         try {
             const donnees = new FormData();
             donnees.append("fichier", fichier);
+            donnees.append("sessionId", sessionChoisie);
             if (commentaire) donnees.append("commentaire", commentaire);
             const resultat = await apiFetch("/justificatifs", { method: "POST", body: donnees });
             setSucces(resultat.message);
             setFichier(null);
             setCommentaire("");
+            setSessionChoisie("");
             charger();
         } catch (e) {
             setErreur(e.message);
@@ -93,20 +99,33 @@ export default function EtudiantAccueil() {
 
             <section className="box admin-section">
                 <h2>Envoyer un justificatif</h2>
-                <form onSubmit={envoyerJustificatif} className="ligne-formulaire colonne">
-                    <input type="file" onChange={(e) => setFichier(e.target.files[0] || null)} required />
-                    <textarea
-                        className="champ-texte"
-                        rows={2}
-                        placeholder="Précision (facultatif)..."
-                        value={commentaire}
-                        onChange={(e) => setCommentaire(e.target.value)}
-                    />
-                    <button type="submit" className="submit-button" disabled={envoiEnCours}>
-                        {envoiEnCours ? "Envoi en cours..." : "Envoyer le justificatif"}
-                    </button>
-                    {succes && <p style={{ color: "var(--success)", fontSize: 13 }}>{succes}</p>}
-                </form>
+                {absencesAJustifier.length === 0 ? (
+                    <p className="texte-discret">Vous n'avez aucune absence ou retard à justifier pour l'instant.</p>
+                ) : (
+                    <form onSubmit={envoyerJustificatif} className="ligne-formulaire colonne">
+                        <select value={sessionChoisie} onChange={(e) => setSessionChoisie(e.target.value)} required>
+                            <option value="">Quelle absence/retard voulez-vous justifier ?</option>
+                            {absencesAJustifier.map((a) => (
+                                <option key={a.session_id} value={a.session_id}>
+                                    {a.matiere_nom} — {new Date(a.date_debut).toLocaleDateString("fr-FR")} —{" "}
+                                    {a.statut === "absent" ? "Absent" : "Retard"}
+                                </option>
+                            ))}
+                        </select>
+                        <input type="file" onChange={(e) => setFichier(e.target.files[0] || null)} required />
+                        <textarea
+                            className="champ-texte"
+                            rows={2}
+                            placeholder="Précision (facultatif)..."
+                            value={commentaire}
+                            onChange={(e) => setCommentaire(e.target.value)}
+                        />
+                        <button type="submit" className="submit-button" disabled={envoiEnCours}>
+                            {envoiEnCours ? "Envoi en cours..." : "Envoyer le justificatif"}
+                        </button>
+                        {succes && <p style={{ color: "var(--success)", fontSize: 13 }}>{succes}</p>}
+                    </form>
+                )}
             </section>
 
             <section className="box admin-section">
@@ -115,7 +134,8 @@ export default function EtudiantAccueil() {
                 {justificatifs.map((j) => (
                     <div key={j.id} className="ligne-liste">
                         <div>
-                            <div className="texte-discret">{new Date(j.date_soumission).toLocaleDateString("fr-FR")}</div>
+                            <strong>{j.matiere_nom} — {new Date(j.date_debut).toLocaleDateString("fr-FR")}</strong>
+                            <div className="texte-discret">Envoyé le {new Date(j.date_soumission).toLocaleDateString("fr-FR")}</div>
                             {j.commentaire && <div>{j.commentaire}</div>}
                         </div>
                         <span className={"tag-statut " + (j.statut === "valide" ? "present" : j.statut === "refuse" ? "absent" : "retard")}>

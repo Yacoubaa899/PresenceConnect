@@ -15,6 +15,9 @@ import EtudiantPublicationsLecture from "./pages/etudiant/EtudiantPublicationsLe
 import EtudiantProfil from "./pages/etudiant/EtudiantProfil.jsx";
 import EtudiantIA from "./pages/etudiant/EtudiantIA.jsx";
 import EtudiantGroupes from "./pages/etudiant/EtudiantGroupes.jsx";
+import ParentLayout from "./pages/parent/ParentLayout.jsx";
+import ParentAccueil from "./pages/parent/ParentAccueil.jsx";
+import ParentPublicationsLecture from "./pages/parent/ParentPublicationsLecture.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import AdminAccueil from "./pages/admin/AdminAccueil.jsx";
 import AdminPublications from "./pages/admin/AdminPublications.jsx";
@@ -50,6 +53,11 @@ export default function App() {
                     <Route path="profil" element={<EtudiantProfil />} />
                     <Route path="ia" element={<EtudiantIA />} />
                     <Route path="groupes" element={<EtudiantGroupes />} />
+                </Route>
+                <Route path="/parent" element={<ParentLayout />}>
+                    <Route index element={<ParentAccueil />} />
+                    <Route path="info" element={<ParentPublicationsLecture categorie="info" />} />
+                    <Route path="planning" element={<ParentPublicationsLecture categorie="planning" />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

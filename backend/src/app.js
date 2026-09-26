@@ -11,6 +11,8 @@ import sessionsRoutes from "./routes/sessions.routes.js";
 import notificationsRoutes from "./routes/notifications.routes.js";
 import fichesRoutes from "./routes/fiches.routes.js";
 import etudiantRoutes from "./routes/etudiant.routes.js";
+import parentRoutes from "./routes/parent.routes.js";
+import statistiquesRoutes from "./routes/statistiques.routes.js";
 
 export const app = express();
 
@@ -29,6 +31,8 @@ app.use("/api/sessions", sessionsRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/administration/fiches", fichesRoutes);
 app.use("/api", etudiantRoutes);
+app.use("/api/parent", parentRoutes);
+app.use("/api/administration/statistiques", statistiquesRoutes);
 
 // Route de vérification rapide que le serveur tourne.
 app.get("/api/sante", (req, res) => {

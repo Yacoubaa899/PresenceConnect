@@ -3,7 +3,7 @@ import { apiFetch } from "../../utils/api.js";
 
 const LIBELLES = { info: "Info", planning: "Planning" };
 
-export default function ProfesseurPublicationsLecture({ categorie }) {
+export default function ParentPublicationsLecture({ categorie }) {
     const [publications, setPublications] = useState([]);
     const [chargement, setChargement] = useState(true);
 

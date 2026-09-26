@@ -23,6 +23,10 @@ export default function AdminAccueil() {
     const [derniereCle, setDerniereCle] = useState(null);
     const [profilOuvert, setProfilOuvert] = useState(null); // { id, enAttente }
     const [fiches, setFiches] = useState([]);
+    const [justificatifs, setJustificatifs] = useState([]);
+    const [statsParFiliere, setStatsParFiliere] = useState([]);
+    const [statsFiltre, setStatsFiltre] = useState({ filiereId: "", classeId: "", matiereId: "" });
+    const [statsGlobales, setStatsGlobales] = useState(null);
     const [ficheOuverte, setFicheOuverte] = useState(null);
 
     useEffect(() => {
@@ -33,7 +37,7 @@ export default function AdminAccueil() {
         setChargement(true);
         setErreur(null);
         try {
-            const [attente, listeFilieres, listeClasses, listeMatieres, listeEtudiants, params, listeProfesseurs, listeFiches] = await Promise.all([
+            const [attente, listeFilieres, listeClasses, listeMatieres, listeEtudiants, params, listeProfesseurs, listeFiches, listeJustificatifs] = await Promise.all([
                 apiFetch("/administration/comptes-en-attente"),
                 apiFetch("/structure/filieres"),
                 apiFetch("/structure/classes"),
@@ -42,6 +46,7 @@ export default function AdminAccueil() {
                 apiFetch("/administration/parametres"),
                 apiFetch("/administration/professeurs"),
                 apiFetch("/administration/fiches"),
+                apiFetch("/administration/justificatifs"),
             ]);
             setComptesEnAttente(attente);
             setFilieres(listeFilieres);
@@ -51,6 +56,11 @@ export default function AdminAccueil() {
             setParametres(params);
             setProfesseurs(listeProfesseurs);
             setFiches(listeFiches);
+            setJustificatifs(listeJustificatifs);
+
+            const parFiliere = await apiFetch("/administration/statistiques/par-filiere");
+            setStatsParFiliere(parFiliere);
+            chargerStatsGlobales({});
         } catch (e) {
             setErreur(e.message);
         } finally {
@@ -134,11 +144,77 @@ export default function AdminAccueil() {
         chargerDonnees();
     }
 
+    async function traiterJustificatif(id, decision) {
+        await apiFetch(`/administration/justificatifs/${id}/traiter`, {
+            method: "POST",
+            body: { decision },
+        });
+        chargerDonnees();
+    }
+
+    async function chargerStatsGlobales(filtre) {
+        const params = new URLSearchParams();
+        if (filtre.filiereId) params.append("filiereId", filtre.filiereId);
+        if (filtre.classeId) params.append("classeId", filtre.classeId);
+        if (filtre.matiereId) params.append("matiereId", filtre.matiereId);
+        const resultat = await apiFetch(`/administration/statistiques/globales?${params.toString()}`);
+        setStatsGlobales(resultat);
+    }
+
+    function majFiltreStats(champ, valeur) {
+        const nouveauFiltre = { ...statsFiltre, [champ]: valeur };
+        setStatsFiltre(nouveauFiltre);
+        chargerStatsGlobales(nouveauFiltre);
+    }
+
     if (chargement) return <p style={{ padding: 18 }}>Chargement...</p>;
 
     return (
         <div className="onglet-contenu">
             {erreur && <p style={{ color: "var(--danger)" }}>{erreur}</p>}
+
+            {/* Statistiques globales de présence */}
+            <section className="box admin-section">
+                <h2>Statistiques de présence</h2>
+
+                {statsParFiliere.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                        {statsParFiliere.map((f) => (
+                            <div key={f.id} className="ligne-liste">
+                                <span>{f.nom}</span>
+                                <strong>{f.total > 0 ? `${f.pourcentageAssiduite}%` : "—"}</strong>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="ligne-formulaire" style={{ marginBottom: 12 }}>
+                    <select value={statsFiltre.filiereId} onChange={(e) => majFiltreStats("filiereId", e.target.value)}>
+                        <option value="">Toutes les filières</option>
+                        {filieres.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                    </select>
+                    <select value={statsFiltre.classeId} onChange={(e) => majFiltreStats("classeId", e.target.value)}>
+                        <option value="">Toutes les classes</option>
+                        {classes.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
+                    </select>
+                    <select value={statsFiltre.matiereId} onChange={(e) => majFiltreStats("matiereId", e.target.value)}>
+                        <option value="">Toutes les matières</option>
+                        {matieres.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                    </select>
+                </div>
+
+                {statsGlobales && (
+                    <div className="gauge-row">
+                        <div className="gauge" style={{ background: `conic-gradient(var(--success) 0 ${statsGlobales.pourcentageAssiduite}%, var(--border) ${statsGlobales.pourcentageAssiduite}% 100%)` }}>
+                            <div className="gauge-hole">{statsGlobales.pourcentageAssiduite}%</div>
+                        </div>
+                        <div className="texte-discret">
+                            {statsGlobales.presents} présent(s) · {statsGlobales.retards} retard(s) · {statsGlobales.absents} absence(s)<br />
+                            sur {statsGlobales.total} enregistrement(s)
+                        </div>
+                    </div>
+                )}
+            </section>
 
             {parametres && (
                 <section className="box admin-section">
@@ -313,6 +389,51 @@ export default function AdminAccueil() {
                             </div>
                         </div>
                         <span className="icone texte-discret">chevron_right</span>
+                    </div>
+                ))}
+            </section>
+
+            {/* Justificatifs d'absence */}
+            <section className="box admin-section">
+                <h2>Justificatifs ({justificatifs.filter((j) => j.statut === "en_attente").length} en attente)</h2>
+                {justificatifs.length === 0 && <p className="texte-discret">Aucun justificatif envoyé.</p>}
+                {justificatifs.map((j) => (
+                    <div key={j.id} className="ligne-liste" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                        <div>
+                            <strong>{j.prenom} {j.nom}</strong>
+                            <div className="texte-discret">
+                                {j.matiere_nom ? (
+                                    <>{j.matiere_nom} — {j.prof_prenom} {j.prof_nom} — {new Date(j.date_debut).toLocaleDateString("fr-FR")} —{" "}
+                                        {j.statut_presence === "absent" ? "Absent" : "Retard"}</>
+                                ) : "Cours non précisé"}
+                            </div>
+
+                            {j.fichier && j.fichier.match(/\.(png|jpe?g|webp)$/i) && (
+                                <img src={`http://localhost:4000${j.fichier}`} alt="" className="apercu-image" />
+                            )}
+                            {j.fichier && j.fichier.match(/\.pdf$/i) && (
+                                <a href={`http://localhost:4000${j.fichier}`} target="_blank" rel="noreferrer" className="lien-fichier">
+                                    <span className="icone" style={{ fontSize: 15 }}>picture_as_pdf</span>
+                                    Voir le fichier
+                                </a>
+                            )}
+                            {j.commentaire && <div>{j.commentaire}</div>}
+
+                            <div className="texte-discret">Envoyé le {new Date(j.date_soumission).toLocaleDateString("fr-FR")}</div>
+                        </div>
+
+                        <div className="actions-ligne" style={{ marginTop: 8 }}>
+                            {j.statut === "en_attente" ? (
+                                <>
+                                    <button className="bouton-petit succes" onClick={() => traiterJustificatif(j.id, "valide")}>Valider</button>
+                                    <button className="bouton-petit danger" onClick={() => traiterJustificatif(j.id, "refuse")}>Refuser</button>
+                                </>
+                            ) : (
+                                <span className={"tag-statut " + (j.statut === "valide" ? "present" : "absent")}>
+                                    {j.statut === "valide" ? "Validé" : "Refusé"}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 ))}
             </section>
