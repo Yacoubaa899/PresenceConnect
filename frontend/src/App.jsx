@@ -9,6 +9,12 @@ import ProfesseurAccueil from "./pages/professeur/ProfesseurAccueil.jsx";
 import ProfesseurPublicationsLecture from "./pages/professeur/ProfesseurPublicationsLecture.jsx";
 import ProfesseurBibliotheque from "./pages/professeur/ProfesseurBibliotheque.jsx";
 import ProfesseurProfil from "./pages/professeur/ProfesseurProfil.jsx";
+import EtudiantLayout from "./pages/etudiant/EtudiantLayout.jsx";
+import EtudiantAccueil from "./pages/etudiant/EtudiantAccueil.jsx";
+import EtudiantPublicationsLecture from "./pages/etudiant/EtudiantPublicationsLecture.jsx";
+import EtudiantProfil from "./pages/etudiant/EtudiantProfil.jsx";
+import EtudiantIA from "./pages/etudiant/EtudiantIA.jsx";
+import EtudiantGroupes from "./pages/etudiant/EtudiantGroupes.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import AdminAccueil from "./pages/admin/AdminAccueil.jsx";
 import AdminPublications from "./pages/admin/AdminPublications.jsx";
@@ -35,6 +41,15 @@ export default function App() {
                     <Route path="planning" element={<ProfesseurPublicationsLecture categorie="planning" />} />
                     <Route path="bibliotheque" element={<ProfesseurBibliotheque />} />
                     <Route path="profil" element={<ProfesseurProfil />} />
+                </Route>
+                <Route path="/etudiant" element={<EtudiantLayout />}>
+                    <Route index element={<EtudiantAccueil />} />
+                    <Route path="info" element={<EtudiantPublicationsLecture categorie="info" />} />
+                    <Route path="bibliotheque" element={<EtudiantPublicationsLecture categorie="bibliotheque" />} />
+                    <Route path="planning" element={<EtudiantPublicationsLecture categorie="planning" />} />
+                    <Route path="profil" element={<EtudiantProfil />} />
+                    <Route path="ia" element={<EtudiantIA />} />
+                    <Route path="groupes" element={<EtudiantGroupes />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

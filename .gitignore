@@ -1,0 +1,17 @@
+# Dépendances (à réinstaller avec npm install, jamais à versionner)
+node_modules/
+
+# Secrets — ne JAMAIS envoyer un .env réel sur GitHub
+.env
+
+# Fichiers générés
+dist/
+build/
+
+# Fichiers uploadés par les utilisateurs (contenu, pas du code)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Fichiers système
+.DS_Store
+Thumbs.db
