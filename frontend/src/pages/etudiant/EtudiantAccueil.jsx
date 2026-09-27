@@ -11,6 +11,7 @@ export default function EtudiantAccueil() {
     const [fichier, setFichier] = useState(null);
     const [commentaire, setCommentaire] = useState("");
     const [absencesAJustifier, setAbsencesAJustifier] = useState([]);
+    const [notes, setNotes] = useState([]);
     const [sessionChoisie, setSessionChoisie] = useState("");
     const [envoiEnCours, setEnvoiEnCours] = useState(false);
     const [succes, setSucces] = useState(null);
@@ -22,16 +23,18 @@ export default function EtudiantAccueil() {
     async function charger() {
         setChargement(true);
         try {
-            const [session, statistiques, mesJustificatifs, absences] = await Promise.all([
+            const [session, statistiques, mesJustificatifs, absences, mesNotes] = await Promise.all([
                 apiFetch("/sessions/ouverte-pour-moi"),
                 apiFetch("/mes-statistiques"),
                 apiFetch("/mes-justificatifs"),
                 apiFetch("/mes-absences-a-justifier"),
+                apiFetch("/mes-notes"),
             ]);
             setSessionOuverte(session);
             setStats(statistiques);
             setJustificatifs(mesJustificatifs);
             setAbsencesAJustifier(absences);
+            setNotes(mesNotes);
         } catch (e) {
             setErreur(e.message);
         } finally {
@@ -96,6 +99,17 @@ export default function EtudiantAccueil() {
                     </div>
                 </section>
             )}
+
+            <section className="box admin-section">
+                <h2>Mes notes</h2>
+                {notes.length === 0 && <p className="texte-discret">Aucune note reçue pour l'instant.</p>}
+                {notes.map((n) => (
+                    <div key={n.id} className="ligne-liste">
+                        <span>{n.matiere_nom}</span>
+                        <strong>{n.valeur}/20</strong>
+                    </div>
+                ))}
+            </section>
 
             <section className="box admin-section">
                 <h2>Envoyer un justificatif</h2>

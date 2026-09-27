@@ -875,3 +875,165 @@ body {
 .rail-btn .icone {
     font-size: 18px;
 }
+
+/* ============================================================
+   Groupes — liste façon messagerie, avatars, discussion
+   ============================================================ */
+
+.groupe-carte {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+}
+
+.groupe-carte:first-of-type {
+    border-top: none;
+}
+
+.groupe-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--primary-soft);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.groupe-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.groupe-avatar.cliquable,
+.groupe-texte.cliquable {
+    cursor: pointer;
+}
+
+.groupe-texte {
+    flex: 1;
+    min-width: 0;
+}
+
+.groupe-texte div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.messages-groupe {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.message-groupe {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.message-auteur {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--primary);
+    margin-bottom: 2px;
+}
+
+.message-reponse-a {
+    font-size: 11px;
+    color: var(--text-muted);
+    border-left: 2px solid var(--border);
+    padding-left: 6px;
+    margin-bottom: 4px;
+}
+
+/* ============================================================
+   Messagerie de groupe — pièces jointes
+   ============================================================ */
+
+.message-groupe-ligne {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.message-image {
+    display: block;
+    max-width: 220px;
+    max-height: 220px;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    margin: 4px 0;
+    object-fit: cover;
+}
+
+.zone-saisie-message {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 6px;
+    background: var(--surface);
+}
+
+.zone-saisie-message input[type="text"],
+.zone-saisie-message input:not([type="file"]) {
+    flex: 1;
+    border: none;
+    padding: 10px 6px;
+    font-family: inherit;
+    font-size: 13.5px;
+    background: transparent;
+}
+
+.zone-saisie-message input:focus {
+    outline: none;
+}
+
+.icone-piece-jointe {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.icone-piece-jointe:hover {
+    background: var(--bg);
+    color: var(--primary);
+}
+
+.icone-piece-jointe .icone {
+    font-size: 18px;
+}
+
+.apercu-fichier-message {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+}

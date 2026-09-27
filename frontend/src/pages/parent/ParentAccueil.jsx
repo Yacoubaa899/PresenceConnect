@@ -6,6 +6,7 @@ const LIBELLES_STATUT = { present: "Présent", retard: "Retard", absent: "Absent
 export default function ParentAccueil() {
     const [enfant, setEnfant] = useState(null);
     const [stats, setStats] = useState(null);
+    const [notes, setNotes] = useState([]);
     const [historique, setHistorique] = useState([]);
     const [chargement, setChargement] = useState(true);
     const [erreur, setErreur] = useState(null);
@@ -17,14 +18,16 @@ export default function ParentAccueil() {
     async function charger() {
         setChargement(true);
         try {
-            const [infoEnfant, statistiques, hist] = await Promise.all([
+            const [infoEnfant, statistiques, hist, mesNotes] = await Promise.all([
                 apiFetch("/parent/mon-enfant"),
                 apiFetch("/parent/mon-enfant/statistiques"),
                 apiFetch("/parent/mon-enfant/historique"),
+                apiFetch("/parent/mon-enfant/notes"),
             ]);
             setEnfant(infoEnfant);
             setStats(statistiques);
             setHistorique(hist);
+            setNotes(mesNotes);
         } catch (e) {
             setErreur(e.message);
         } finally {
@@ -59,6 +62,17 @@ export default function ParentAccueil() {
                     </div>
                 </section>
             )}
+
+            <section className="box admin-section">
+                <h2>Notes</h2>
+                {notes.length === 0 && <p className="texte-discret">Aucune note reçue pour l'instant.</p>}
+                {notes.map((n) => (
+                    <div key={n.id} className="ligne-liste">
+                        <span>{n.matiere_nom}</span>
+                        <strong>{n.valeur}/20</strong>
+                    </div>
+                ))}
+            </section>
 
             <section className="box admin-section">
                 <h2>Historique récent</h2>

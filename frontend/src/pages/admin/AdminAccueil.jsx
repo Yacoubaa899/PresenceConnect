@@ -27,6 +27,9 @@ export default function AdminAccueil() {
     const [statsParFiliere, setStatsParFiliere] = useState([]);
     const [statsFiltre, setStatsFiltre] = useState({ filiereId: "", classeId: "", matiereId: "" });
     const [statsGlobales, setStatsGlobales] = useState(null);
+    const [noteForm, setNoteForm] = useState({ etudiantId: "", matiereId: "", valeur: "" });
+    const [notesEnvoyees, setNotesEnvoyees] = useState([]);
+    const [succesNote, setSuccesNote] = useState(null);
     const [ficheOuverte, setFicheOuverte] = useState(null);
 
     useEffect(() => {
@@ -61,6 +64,8 @@ export default function AdminAccueil() {
             const parFiliere = await apiFetch("/administration/statistiques/par-filiere");
             setStatsParFiliere(parFiliere);
             chargerStatsGlobales({});
+
+            setNotesEnvoyees(await apiFetch("/administration/notes"));
         } catch (e) {
             setErreur(e.message);
         } finally {
@@ -159,6 +164,19 @@ export default function AdminAccueil() {
         if (filtre.matiereId) params.append("matiereId", filtre.matiereId);
         const resultat = await apiFetch(`/administration/statistiques/globales?${params.toString()}`);
         setStatsGlobales(resultat);
+    }
+
+    async function envoyerNote(e) {
+        e.preventDefault();
+        setSuccesNote(null);
+        try {
+            await apiFetch("/administration/notes", { method: "POST", body: noteForm });
+            setSuccesNote("Note envoyée.");
+            setNoteForm({ etudiantId: "", matiereId: "", valeur: "" });
+            setNotesEnvoyees(await apiFetch("/administration/notes"));
+        } catch (e) {
+            setErreur(e.message);
+        }
     }
 
     function majFiltreStats(champ, valeur) {
@@ -436,6 +454,40 @@ export default function AdminAccueil() {
                         </div>
                     </div>
                 ))}
+            </section>
+
+            {/* Notes */}
+            <section className="box admin-section">
+                <h2>Envoyer une note</h2>
+                <form onSubmit={envoyerNote} className="ligne-formulaire colonne">
+                    <select value={noteForm.etudiantId} onChange={(e) => setNoteForm({ ...noteForm, etudiantId: e.target.value })} required>
+                        <option value="">Étudiant...</option>
+                        {etudiants.map((e) => <option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>)}
+                    </select>
+                    <select value={noteForm.matiereId} onChange={(e) => setNoteForm({ ...noteForm, matiereId: e.target.value })} required>
+                        <option value="">Matière...</option>
+                        {matieres.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                    </select>
+                    <input
+                        type="number" min="0" max="20" step="0.5" placeholder="Note sur 20"
+                        value={noteForm.valeur}
+                        onChange={(e) => setNoteForm({ ...noteForm, valeur: e.target.value })}
+                        required
+                    />
+                    <button type="submit" className="submit-button">Envoyer la note</button>
+                    {succesNote && <p style={{ color: "var(--success)", fontSize: 13 }}>{succesNote}</p>}
+                </form>
+
+                {notesEnvoyees.length > 0 && (
+                    <div style={{ marginTop: 14 }}>
+                        {notesEnvoyees.map((n) => (
+                            <div key={n.id} className="ligne-liste">
+                                <span>{n.prenom} {n.nom} — {n.matiere_nom}</span>
+                                <strong>{n.valeur}/20</strong>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </section>
 
             {profilOuvert && (

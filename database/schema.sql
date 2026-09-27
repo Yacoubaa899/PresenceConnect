@@ -242,7 +242,8 @@ CREATE TABLE publications (
 CREATE TABLE groupes (
   id                INT AUTO_INCREMENT PRIMARY KEY,
   nom               VARCHAR(150) NOT NULL,
-  description       TEXT,
+  description       VARCHAR(150),
+  photo_groupe      VARCHAR(255),
   createur_id       INT NOT NULL,
   created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (createur_id) REFERENCES etudiants(id)
@@ -267,6 +268,34 @@ CREATE TABLE groupes_invitations (
   FOREIGN KEY (groupe_id) REFERENCES groupes(id) ON DELETE CASCADE,
   FOREIGN KEY (invite_par) REFERENCES etudiants(id),
   FOREIGN KEY (etudiant_invite) REFERENCES etudiants(id)
+);
+
+-- Demande d'un étudiant pour rejoindre un groupe : doit être approuvée
+-- par le créateur du groupe (contrairement à l'invitation, qui part du groupe).
+CREATE TABLE groupes_demandes_adhesion (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  groupe_id         INT NOT NULL,
+  etudiant_id       INT NOT NULL,
+  statut            ENUM('en_attente','acceptee','refusee') NOT NULL DEFAULT 'en_attente',
+  created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (groupe_id, etudiant_id),
+  FOREIGN KEY (groupe_id) REFERENCES groupes(id) ON DELETE CASCADE,
+  FOREIGN KEY (etudiant_id) REFERENCES etudiants(id) ON DELETE CASCADE
+);
+
+-- Messages échangés dans un groupe (texte, image ou PDF), avec réponse possible à un message précis.
+CREATE TABLE groupes_messages (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  groupe_id         INT NOT NULL,
+  auteur_id         INT NOT NULL,
+  contenu           TEXT NULL,
+  type_contenu      ENUM('texte','image','pdf') NOT NULL DEFAULT 'texte',
+  fichier           VARCHAR(255) NULL,
+  reponse_a         INT NULL,
+  created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (groupe_id) REFERENCES groupes(id) ON DELETE CASCADE,
+  FOREIGN KEY (auteur_id) REFERENCES etudiants(id) ON DELETE CASCADE,
+  FOREIGN KEY (reponse_a) REFERENCES groupes_messages(id) ON DELETE SET NULL
 );
 
 -- ------------------------------------------------------------
