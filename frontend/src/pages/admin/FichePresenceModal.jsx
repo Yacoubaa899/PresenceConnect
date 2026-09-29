@@ -7,7 +7,7 @@ export default function FichePresenceModal({ ficheId, onFermer }) {
     const [donnees, setDonnees] = useState(null);
     const [chargement, setChargement] = useState(true);
     const [erreur, setErreur] = useState(null);
-    const [telechargement, setTelechargement] = useState(false);
+    const [telechargement, setTelechargement] = useState(null); // "pdf" ou "excel"
 
     useEffect(() => {
         apiFetch(`/administration/fiches/${ficheId}`)
@@ -16,14 +16,14 @@ export default function FichePresenceModal({ ficheId, onFermer }) {
             .finally(() => setChargement(false));
     }, [ficheId]);
 
-    async function telecharger() {
-        setTelechargement(true);
+    async function telecharger(format) {
+        setTelechargement(format);
         try {
-            await apiTelecharger(`/administration/fiches/${ficheId}/pdf`, `fiche-presence-${ficheId}.pdf`);
+            await apiTelecharger(`/administration/fiches/${ficheId}/${format}`, `fiche-presence-${ficheId}.${format === "excel" ? "xlsx" : "pdf"}`);
         } catch (e) {
             setErreur(e.message);
         } finally {
-            setTelechargement(false);
+            setTelechargement(null);
         }
     }
 
@@ -57,9 +57,14 @@ export default function FichePresenceModal({ ficheId, onFermer }) {
                             ))}
                         </div>
 
-                        <button className="submit-button" style={{ marginTop: 16 }} onClick={telecharger} disabled={telechargement}>
-                            {telechargement ? "Génération du PDF..." : "Télécharger en PDF"}
-                        </button>
+                        <div className="actions-ligne" style={{ marginTop: 16 }}>
+                            <button className="submit-button" style={{ width: "auto" }} onClick={() => telecharger("pdf")} disabled={!!telechargement}>
+                                {telechargement === "pdf" ? "Génération..." : "Télécharger en PDF"}
+                            </button>
+                            <button className="submit-button" style={{ width: "auto" }} onClick={() => telecharger("excel")} disabled={!!telechargement}>
+                                {telechargement === "excel" ? "Génération..." : "Télécharger en Excel"}
+                            </button>
+                        </div>
                     </>
                 )}
             </div>

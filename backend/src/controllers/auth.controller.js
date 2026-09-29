@@ -1,6 +1,7 @@
 import { pool } from "../config/db.js";
 import { hashSecret, verifySecret, generateNumericCode } from "../utils/hash.js";
 import { signToken } from "../utils/jwt.js";
+import crypto from "crypto";
 
 // ============================================================
 // ÉTUDIANT — inscription libre (seul rôle concerné)
@@ -262,4 +263,83 @@ export async function loginParent(req, res) {
     token,
     utilisateur: { role: "parent", enfant: { id: etudiant.id, nom: etudiant.nom, prenom: etudiant.prenom } },
   });
+}
+
+// ============================================================
+// MOT DE PASSE OUBLIÉ (étudiant) — demande d'un lien de réinitialisation
+// ============================================================
+
+export async function demanderReinitialisation(req, res) {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ erreur: "E-mail requis." });
+
+  const [[etudiant]] = await pool.query("SELECT id FROM etudiants WHERE email = ?", [email]);
+
+  console.log(`\n[Mot de passe oublié] Demande reçue pour : ${email}`);
+
+  const reponseGenerique = {
+    message: "Si un compte existe avec cet e-mail, un lien de réinitialisation a été envoyé.",
+  };
+  // MODE TEST (désactivé par défaut) : affiche le lien directement dans la réponse
+  // pour pouvoir tester sans service d'e-mail. Ne JAMAIS l'activer en production.
+  const modeTest = process.env.DEV_AFFICHER_LIEN_RESET === "true";
+
+  if (!etudiant) {
+    console.log("[Mot de passe oublié] Aucun étudiant trouvé avec cet e-mail : aucun lien généré.\n");
+    return res.json({
+      ...reponseGenerique,
+      ...(modeTest ? { devInfo: "Mode test : aucun étudiant trouvé avec cet e-mail." } : {}),
+    });
+  }
+
+  const tokenEnClair = crypto.randomBytes(32).toString("hex");
+  const tokenHash = await hashSecret(tokenEnClair);
+  const dateExpiration = new Date(Date.now() + 60 * 60 * 1000);
+
+  await pool.query(
+    "INSERT INTO reinitialisations_mot_de_passe (etudiant_id, token_hash, date_expiration) VALUES (?, ?, ?)",
+    [etudiant.id, tokenHash, dateExpiration]
+  );
+
+  const lien = `http://localhost:5173/reinitialiser-mot-de-passe?token=${tokenEnClair}&id=${etudiant.id}`;
+
+  console.log("\n📧 Lien de réinitialisation (à envoyer par e-mail plus tard) :");
+  console.log(lien, "\n");
+
+  res.json({
+    ...reponseGenerique,
+    ...(modeTest ? { devLien: lien } : {}),
+  });
+}
+
+export async function reinitialiserMotDePasse(req, res) {
+  const { id, token, nouveauMotDePasse } = req.body;
+  if (!id || !token || !nouveauMotDePasse) {
+    return res.status(400).json({ erreur: "Requête incomplète." });
+  }
+
+  const [demandes] = await pool.query(
+    `SELECT * FROM reinitialisations_mot_de_passe
+     WHERE etudiant_id = ? AND utilise = FALSE AND date_expiration > NOW()
+     ORDER BY date_creation DESC`,
+    [id]
+  );
+
+  let demandeValide = null;
+  for (const demande of demandes) {
+    if (await verifySecret(token, demande.token_hash)) {
+      demandeValide = demande;
+      break;
+    }
+  }
+
+  if (!demandeValide) {
+    return res.status(400).json({ erreur: "Ce lien est invalide ou a expiré. Refaites une demande." });
+  }
+
+  const nouveauHash = await hashSecret(nouveauMotDePasse);
+  await pool.query("UPDATE etudiants SET mot_de_passe_hash = ? WHERE id = ?", [nouveauHash, id]);
+  await pool.query("UPDATE reinitialisations_mot_de_passe SET utilise = TRUE WHERE id = ?", [demandeValide.id]);
+
+  res.json({ message: "Mot de passe mis à jour. Vous pouvez vous connecter." });
 }

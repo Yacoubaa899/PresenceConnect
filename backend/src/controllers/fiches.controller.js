@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import ExcelJS from "exceljs";
 import { pool } from "../config/db.js";
 
 // ============================================================
@@ -143,4 +144,92 @@ export async function exporterFichePdf(req, res) {
     doc.fontSize(11).text(`Total : ${total} — Présents : ${presents} — Retards : ${retards} — Absents : ${absents}`);
 
     doc.end();
+}
+
+// ============================================================
+// Export Excel de la fiche.
+// ============================================================
+
+export async function exporterFicheExcel(req, res) {
+    const { id } = req.params;
+
+    const [[session]] = await pool.query(
+        `SELECT s.*, m.nom AS matiere_nom, c.nom AS classe_nom, f.nom AS filiere_nom,
+            p.nom AS prof_nom, p.prenom AS prof_prenom
+     FROM sessions_cours s
+     JOIN matieres m ON m.id = s.matiere_id
+     JOIN classes c ON c.id = s.classe_id
+     JOIN filieres f ON f.id = c.filiere_id
+     JOIN professeurs p ON p.id = s.professeur_id
+     WHERE s.id = ?`,
+        [id]
+    );
+    if (!session) return res.status(404).json({ erreur: "Fiche introuvable." });
+
+    const [etudiants] = await pool.query(
+        `SELECT e.nom, e.prenom, pr.statut
+     FROM presences pr
+     JOIN etudiants e ON e.id = pr.etudiant_id
+     WHERE pr.session_id = ?
+     ORDER BY e.nom, e.prenom`,
+        [id]
+    );
+
+    const libelles = { present: "Présent", retard: "Retard", absent: "Absent" };
+    const dateDebut = new Date(session.date_debut);
+
+    const classeur = new ExcelJS.Workbook();
+    classeur.creator = "PresenceConnect";
+    const feuille = classeur.addWorksheet("Fiche de présence");
+
+    feuille.mergeCells("A1:C1");
+    feuille.getCell("A1").value = "Fiche de présence — PresenceConnect";
+    feuille.getCell("A1").font = { bold: true, size: 14 };
+
+    const infos = [
+        ["Filière", session.filiere_nom],
+        ["Classe", session.classe_nom],
+        ["Matière", session.matiere_nom],
+        ["Professeur", `${session.prof_prenom} ${session.prof_nom}`],
+        ["Date", dateDebut.toLocaleDateString("fr-FR")],
+        ["Heure", dateDebut.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })],
+    ];
+    if (session.heures_effectuees) infos.push(["Heures effectuées", `${session.heures_effectuees} h`]);
+
+    let ligne = 3;
+    infos.forEach(([libelle, valeur]) => {
+        feuille.getCell(`A${ligne}`).value = libelle;
+        feuille.getCell(`A${ligne}`).font = { bold: true };
+        feuille.getCell(`B${ligne}`).value = valeur;
+        ligne += 1;
+    });
+
+    ligne += 1;
+    const ligneEntete = ligne;
+    feuille.getRow(ligneEntete).values = ["#", "Étudiant", "Statut"];
+    feuille.getRow(ligneEntete).font = { bold: true };
+    feuille.getRow(ligneEntete).eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E7FF" } };
+    });
+
+    etudiants.forEach((e, i) => {
+        feuille.addRow([i + 1, `${e.prenom} ${e.nom}`, libelles[e.statut] || e.statut]);
+    });
+
+    feuille.getColumn(1).width = 6;
+    feuille.getColumn(2).width = 30;
+    feuille.getColumn(3).width = 14;
+
+    const dateStr = dateDebut.toISOString().slice(0, 10);
+    const nomFichier = `fiche-presence-${session.matiere_nom}-${dateStr}.xlsx`
+        .replace(/\s+/g, "-").toLowerCase();
+
+    res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${nomFichier}"`);
+
+    await classeur.xlsx.write(res);
+    res.end();
 }

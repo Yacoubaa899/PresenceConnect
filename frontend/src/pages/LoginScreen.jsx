@@ -183,7 +183,11 @@ export default function LoginScreen() {
 
             <div className="box signup-box">
                 {role === "student" && (
-                    <>Pas encore de compte ? <Link to="/inscription">Créer un compte</Link></>
+                    <>
+                        Pas encore de compte ? <Link to="/inscription">Créer un compte</Link>
+                        <br />
+                        <Link to="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
+                    </>
                 )}
                 {role === "teacher" && (
                     <>Première connexion ? <Link to="/activation-professeur">Activer mon compte avec ma clé</Link></>

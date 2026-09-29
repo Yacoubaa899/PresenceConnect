@@ -3,6 +3,8 @@ import InstallScreen from "./pages/InstallScreen.jsx";
 import LoginScreen from "./pages/LoginScreen.jsx";
 import InscriptionEtudiant from "./pages/InscriptionEtudiant.jsx";
 import ActivationProfesseur from "./pages/ActivationProfesseur.jsx";
+import MotDePasseOublie from "./pages/MotDePasseOublie.jsx";
+import ReinitialiserMotDePasse from "./pages/ReinitialiserMotDePasse.jsx";
 import RequireInstalled from "./pages/RequireInstalled.jsx";
 import ProfesseurLayout from "./pages/professeur/ProfesseurLayout.jsx";
 import ProfesseurAccueil from "./pages/professeur/ProfesseurAccueil.jsx";
@@ -22,15 +24,19 @@ import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import AdminAccueil from "./pages/admin/AdminAccueil.jsx";
 import AdminPublications from "./pages/admin/AdminPublications.jsx";
 import AdminProfil from "./pages/admin/AdminProfil.jsx";
+import IndicateurHorsLigne from "./components/IndicateurHorsLigne.jsx";
 
 export default function App() {
     return (
         <BrowserRouter>
+            <IndicateurHorsLigne />
             <Routes>
                 <Route path="/" element={<InstallScreen />} />
                 <Route path="/connexion" element={<RequireInstalled><LoginScreen /></RequireInstalled>} />
                 <Route path="/inscription" element={<RequireInstalled><InscriptionEtudiant /></RequireInstalled>} />
                 <Route path="/activation-professeur" element={<RequireInstalled><ActivationProfesseur /></RequireInstalled>} />
+                <Route path="/mot-de-passe-oublie" element={<RequireInstalled><MotDePasseOublie /></RequireInstalled>} />
+                <Route path="/reinitialiser-mot-de-passe" element={<RequireInstalled><ReinitialiserMotDePasse /></RequireInstalled>} />
                 <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminAccueil />} />
                     <Route path="info" element={<AdminPublications categorie="info" />} />

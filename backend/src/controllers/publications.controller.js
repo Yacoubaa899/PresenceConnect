@@ -164,6 +164,22 @@ export async function creerPublicationProfesseur(req, res) {
         [typeContenu, fichier || null, texte || null, req.utilisateur.id, matiereId, new Date(), dateExpiration]
     );
 
+    // Prévenir l'administration qu'un prof a publié dans la bibliothèque.
+    const [[prof]] = await pool.query("SELECT nom, prenom FROM professeurs WHERE id = ?", [req.utilisateur.id]);
+    const [[matiere]] = await pool.query("SELECT nom FROM matieres WHERE id = ?", [matiereId]);
+    const [admins] = await pool.query("SELECT id FROM administrateurs");
+    for (const admin of admins) {
+        await pool.query(
+            `INSERT INTO notifications (utilisateur_id, type, contenu, lien_id)
+       VALUES (?, 'publication_bibliotheque', ?, ?)`,
+            [
+                admin.id,
+                `${prof.prenom} ${prof.nom} a publié un cours en bibliothèque (${matiere?.nom || "matière"}).`,
+                resultat.insertId,
+            ]
+        );
+    }
+
     res.status(201).json({ id: resultat.insertId, message: "Cours publié dans la bibliothèque." });
 }
 
