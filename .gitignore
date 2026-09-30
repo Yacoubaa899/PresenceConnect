@@ -15,3 +15,4 @@ backend/uploads/*
 # Fichiers système
 .DS_Store
 Thumbs.db
+backend/.env
