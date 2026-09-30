@@ -15,6 +15,7 @@ import parentRoutes from "./routes/parent.routes.js";
 import statistiquesRoutes from "./routes/statistiques.routes.js";
 import groupesRoutes from "./routes/groupes.routes.js";
 import notesRoutes from "./routes/notes.routes.js";
+import iaRoutes from "./routes/ia.routes.js";
 
 export const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/parent", parentRoutes);
 app.use("/api/administration/statistiques", statistiquesRoutes);
 app.use("/api", groupesRoutes);
 app.use("/api", notesRoutes);
+app.use("/api", iaRoutes);
 
 // Route de vérification rapide que le serveur tourne.
 app.get("/api/sante", (req, res) => {
