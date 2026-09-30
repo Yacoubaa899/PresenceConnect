@@ -1,6 +1,7 @@
 import { pool } from "../config/db.js";
 import { hashSecret, verifySecret, generateNumericCode } from "../utils/hash.js";
 import { signToken } from "../utils/jwt.js";
+import { envoyerEmail } from "../utils/mail.js";
 import crypto from "crypto";
 
 // ============================================================
@@ -303,12 +304,32 @@ export async function demanderReinitialisation(req, res) {
 
   const lien = `http://localhost:5173/reinitialiser-mot-de-passe?token=${tokenEnClair}&id=${etudiant.id}`;
 
-  console.log("\n📧 Lien de réinitialisation (à envoyer par e-mail plus tard) :");
+  console.log("\n📧 Lien de réinitialisation généré :");
   console.log(lien, "\n");
+
+  let emailEnvoye = false;
+  let erreurEmail = null;
+  try {
+    await envoyerEmail({
+      destinataire: email,
+      sujet: "Réinitialisation de votre mot de passe — PresenceConnect",
+      texte: `Vous avez demandé à réinitialiser votre mot de passe.\n\nCliquez sur ce lien (valable 1 heure) :\n${lien}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.`,
+      html: `
+        <p>Vous avez demandé à réinitialiser votre mot de passe.</p>
+        <p><a href="${lien}">Cliquez ici pour choisir un nouveau mot de passe</a> (valable 1 heure).</p>
+        <p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.</p>
+      `,
+    });
+    emailEnvoye = true;
+    console.log(`[Mot de passe oublié] E-mail envoyé avec succès à ${email}.\n`);
+  } catch (erreur) {
+    erreurEmail = erreur.message;
+    console.log(`[Mot de passe oublié] Envoi de l'e-mail impossible : ${erreurEmail}\n`);
+  }
 
   res.json({
     ...reponseGenerique,
-    ...(modeTest ? { devLien: lien } : {}),
+    ...(modeTest ? { devLien: lien, devInfo: emailEnvoye ? "E-mail envoyé avec succès." : `E-mail non envoyé : ${erreurEmail}` } : {}),
   });
 }
 
