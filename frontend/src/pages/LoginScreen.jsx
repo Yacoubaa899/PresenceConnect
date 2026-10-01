@@ -2,10 +2,34 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 const ROLES = [
-    { id: "student", label: "Étud" },
-    { id: "admin", label: "Admin" },
-    { id: "teacher", label: "Prof" },
-    { id: "parent", label: "Parents" },
+    {
+        id: "student",
+        nom: "Étudiant",
+        description: "Accédez à vos cours, notes, absences et plus encore.",
+        icone: "school",
+        classe: "carte-etudiant",
+    },
+    {
+        id: "teacher",
+        nom: "Professeur",
+        description: "Gérez vos cours, vos élèves, vos notes et vos informations.",
+        icone: "badge",
+        classe: "carte-professeur",
+    },
+    {
+        id: "admin",
+        nom: "Administration",
+        description: "Gérez l'établissement, les élèves, les professeurs et les publications.",
+        icone: "groups",
+        classe: "carte-administration",
+    },
+    {
+        id: "parent",
+        nom: "Parent",
+        description: "Suivez la scolarité de votre enfant et restez informé.",
+        icone: "family_restroom",
+        classe: "carte-parent",
+    },
 ];
 
 // Adresse de ton backend Node.js en développement local.
@@ -40,7 +64,8 @@ function buildLoginRequest(role, form) {
 
 export default function LoginScreen() {
     const navigate = useNavigate();
-    const [role, setRole] = useState("student");
+    const [etape, setEtape] = useState("choix"); // "choix" ou "champs"
+    const [role, setRole] = useState(null);
     const [form, setForm] = useState({
         email: "",
         password: "",
@@ -51,6 +76,12 @@ export default function LoginScreen() {
     const [submitting, setSubmitting] = useState(false);
     const [erreur, setErreur] = useState(null);
     const [succes, setSucces] = useState(null);
+
+    function choisirRole(idRole) {
+        setRole(idRole);
+        setEtape("champs");
+        setErreur(null);
+    }
 
     function updateField(field, value) {
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -76,7 +107,6 @@ export default function LoginScreen() {
                 return;
             }
 
-            // Le token doit être conservé pour les prochaines requêtes (ex. localStorage).
             localStorage.setItem("presenceconnect_token", data.token);
             localStorage.setItem("presenceconnect_utilisateur", JSON.stringify(data.utilisateur));
             setSucces(`Connecté avec succès en tant que ${data.utilisateur.role}.`);
@@ -95,22 +125,57 @@ export default function LoginScreen() {
         }
     }
 
+    // ------------------------------------------------------------
+    // ÉTAPE 1 : choix du rôle
+    // ------------------------------------------------------------
+    if (etape === "choix") {
+        return (
+            <div className="ecran-choix-role">
+                <div className="choix-role-entete">
+                    <h1>Choisissez votre espace</h1>
+                    <p>Connectez-vous en tant que :</p>
+                </div>
+
+                <div className="choix-role-liste">
+                    {ROLES.map((r) => (
+                        <button
+                            key={r.id}
+                            type="button"
+                            className={"carte-role " + r.classe}
+                            onClick={() => choisirRole(r.id)}
+                        >
+                            <span className="carte-role-icone">
+                                <span className="icone">{r.icone}</span>
+                            </span>
+                            <span className="carte-role-texte">
+                                <strong>{r.nom}</strong>
+                                <span>{r.description}</span>
+                            </span>
+                            <span className="icone carte-role-chevron">chevron_right</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="choix-role-pied">
+                    <span className="icone choix-role-pied-icone">menu_book</span>
+                    <p>Un bon suivi aujourd'hui<br />pour un meilleur avenir demain.</p>
+                </div>
+            </div>
+        );
+    }
+
+    // ------------------------------------------------------------
+    // ÉTAPE 2 : champs de connexion, selon le rôle choisi
+    // ------------------------------------------------------------
+    const roleActuel = ROLES.find((r) => r.id === role);
+
     return (
         <div className="screen login-screen">
-            <div className="box title-box">presenceConnect</div>
+            <button type="button" className="lien-retour" onClick={() => setEtape("choix")}>
+                <span className="icone" style={{ fontSize: 16 }}>chevron_left</span> Changer d'espace
+            </button>
 
-            <div className="box role-tabs">
-                {ROLES.map((r) => (
-                    <button
-                        key={r.id}
-                        type="button"
-                        className={"role-tab" + (role === r.id ? " selected" : "")}
-                        onClick={() => setRole(r.id)}
-                    >
-                        {r.label}
-                    </button>
-                ))}
-            </div>
+            <div className="box title-box">{roleActuel?.nom}</div>
 
             <form className="box fields-box" onSubmit={handleSubmit}>
                 {role === "student" && (
@@ -122,6 +187,7 @@ export default function LoginScreen() {
                                 value={form.email}
                                 onChange={(e) => updateField("email", e.target.value)}
                                 required
+                                autoFocus
                             />
                         </label>
                         <label>
@@ -144,6 +210,7 @@ export default function LoginScreen() {
                             value={form.accessKey}
                             onChange={(e) => updateField("accessKey", e.target.value)}
                             required
+                            autoFocus
                         />
                     </label>
                 )}
@@ -157,6 +224,7 @@ export default function LoginScreen() {
                                 value={form.phone}
                                 onChange={(e) => updateField("phone", e.target.value)}
                                 required
+                                autoFocus
                             />
                         </label>
                         <label>

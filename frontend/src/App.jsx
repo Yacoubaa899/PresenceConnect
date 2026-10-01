@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import InstallScreen from "./pages/InstallScreen.jsx";
+import SplashScreen from "./pages/SplashScreen.jsx";
 import LoginScreen from "./pages/LoginScreen.jsx";
 import InscriptionEtudiant from "./pages/InscriptionEtudiant.jsx";
 import ActivationProfesseur from "./pages/ActivationProfesseur.jsx";
@@ -31,7 +32,8 @@ export default function App() {
         <BrowserRouter>
             <IndicateurHorsLigne />
             <Routes>
-                <Route path="/" element={<InstallScreen />} />
+                <Route path="/" element={<SplashScreen />} />
+                <Route path="/accueil-installation" element={<InstallScreen />} />
                 <Route path="/connexion" element={<RequireInstalled><LoginScreen /></RequireInstalled>} />
                 <Route path="/inscription" element={<RequireInstalled><InscriptionEtudiant /></RequireInstalled>} />
                 <Route path="/activation-professeur" element={<RequireInstalled><ActivationProfesseur /></RequireInstalled>} />
