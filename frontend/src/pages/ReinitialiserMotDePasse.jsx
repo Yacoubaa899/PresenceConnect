@@ -10,6 +10,8 @@ export default function ReinitialiserMotDePasse() {
 
     const [nouveauMotDePasse, setNouveauMotDePasse] = useState("");
     const [confirmation, setConfirmation] = useState("");
+    const [voirMotDePasse, setVoirMotDePasse] = useState(false);
+    const [voirConfirmation, setVoirConfirmation] = useState(false);
     const [envoi, setEnvoi] = useState(false);
     const [erreur, setErreur] = useState(null);
     const [succes, setSucces] = useState(null);
@@ -42,36 +44,83 @@ export default function ReinitialiserMotDePasse() {
         }
     }
 
-    if (!token || !id) {
-        return (
-            <div className="screen">
-                <div className="title-box">Lien invalide</div>
-                <p className="texte-discret" style={{ textAlign: "center" }}>
-                    Ce lien de réinitialisation est incomplet ou invalide.
-                </p>
-                <p className="signup-box"><Link to="/mot-de-passe-oublie">Refaire une demande</Link></p>
-            </div>
-        );
-    }
+    const lienInvalide = !token || !id;
 
     return (
-        <div className="screen">
-            <div className="title-box">Nouveau mot de passe</div>
-            <form onSubmit={envoyer} className="fields-box box">
-                <label>
-                    Nouveau mot de passe
-                    <input type="password" value={nouveauMotDePasse} onChange={(e) => setNouveauMotDePasse(e.target.value)} required autoFocus />
-                </label>
-                <label>
-                    Confirmer le mot de passe
-                    <input type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required />
-                </label>
-                <button type="submit" className="submit-button" disabled={envoi}>
-                    {envoi ? "Mise à jour..." : "Mettre à jour le mot de passe"}
+        <div className="ecran-auth-fixe">
+            <div className="entete-courbe">
+                <button type="button" className="entete-courbe-retour" onClick={() => navigate("/connexion")}>
+                    <span className="icone" style={{ fontSize: 18 }}>chevron_left</span>
                 </button>
-                {succes && <p style={{ color: "var(--success)", fontSize: 13 }}>{succes}</p>}
-                {erreur && <p style={{ color: "var(--danger)", fontSize: 13 }}>{erreur}</p>}
-            </form>
+                <h1>
+                    <span style={{ color: "#fff" }}>Présence</span>{" "}
+                    <span style={{ color: "#bfe0ff" }}>Connect</span>
+                </h1>
+            </div>
+
+            <div className="ecran-auth-contenu">
+                <div className="ecran-auth-illustration">
+                    <span className="icone">lock</span>
+                </div>
+
+                <h2>Nouveau mot de passe</h2>
+
+                {lienInvalide ? (
+                    <>
+                        <p className="sous-titre">Ce lien de réinitialisation est incomplet ou invalide.</p>
+                        <Link to="/mot-de-passe-oublie" className="ecran-auth-lien-retour">Refaire une demande</Link>
+                    </>
+                ) : (
+                    <>
+                        <p className="sous-titre">Choisissez un nouveau mot de passe pour sécuriser votre compte.</p>
+
+                        <form onSubmit={envoyer} className="ecran-auth-formulaire">
+                            <div>
+                                <label className="champ-icone-label">Nouveau mot de passe</label>
+                                <div className="champ-icone">
+                                    <span className="icone">lock</span>
+                                    <input
+                                        type={voirMotDePasse ? "text" : "password"}
+                                        placeholder="Entrez votre nouveau mot de passe"
+                                        value={nouveauMotDePasse}
+                                        onChange={(e) => setNouveauMotDePasse(e.target.value)}
+                                        required
+                                        autoFocus
+                                    />
+                                    <button type="button" className="champ-icone-bouton-oeil" onClick={() => setVoirMotDePasse((v) => !v)}>
+                                        <span className="icone" style={{ fontSize: 18 }}>{voirMotDePasse ? "visibility_off" : "visibility"}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="champ-icone-label">Confirmer le mot de passe</label>
+                                <div className="champ-icone">
+                                    <span className="icone">lock</span>
+                                    <input
+                                        type={voirConfirmation ? "text" : "password"}
+                                        placeholder="Confirmez votre mot de passe"
+                                        value={confirmation}
+                                        onChange={(e) => setConfirmation(e.target.value)}
+                                        required
+                                    />
+                                    <button type="button" className="champ-icone-bouton-oeil" onClick={() => setVoirConfirmation((v) => !v)}>
+                                        <span className="icone" style={{ fontSize: 18 }}>{voirConfirmation ? "visibility_off" : "visibility"}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button type="submit" className="bouton-bleu-fleche" disabled={envoi}>
+                                {envoi ? "Mise à jour..." : "Réinitialiser le mot de passe"}
+                                {!envoi && <span className="icone" style={{ fontSize: 17 }}>arrow_forward</span>}
+                            </button>
+
+                            {succes && <p style={{ color: "var(--success)", fontSize: 12.5 }}>{succes}</p>}
+                            {erreur && <p style={{ color: "var(--danger)", fontSize: 12.5 }}>{erreur}</p>}
+                        </form>
+                    </>
+                )}
+            </div>
         </div>
     );
 }

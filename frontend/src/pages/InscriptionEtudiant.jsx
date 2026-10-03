@@ -50,8 +50,15 @@ export default function InscriptionEtudiant() {
 
     return (
         <div className="screen">
-            <div className="title-box">
-                Créer un compte étudiant
+            <div style={{ textAlign: "center", padding: "14px 0 4px" }}>
+                <div style={{
+                    width: 64, height: 64, borderRadius: "50%", background: "var(--primary)",
+                    display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px",
+                }}>
+                    <span className="icone" style={{ fontSize: 30, color: "#fff" }}>person_add</span>
+                </div>
+                <h2 style={{ margin: "0 0 4px", color: "var(--primary-navy)" }}>Créer un compte</h2>
+                <p className="texte-discret" style={{ margin: 0 }}>Rejoignez Présence Connect</p>
             </div>
 
             <form onSubmit={envoyerFormulaire} className="fields-box box">
