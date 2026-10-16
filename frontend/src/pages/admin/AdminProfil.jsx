@@ -1,66 +1,56 @@
-import { useState } from "react";
-import { apiFetch, getUtilisateurConnecte } from "../../utils/api.js";
+import { useNavigate } from "react-router-dom";
+import { getUtilisateurConnecte, deconnecter } from "../../utils/api.js";
 
 export default function AdminProfil() {
+    const navigate = useNavigate();
     const utilisateur = getUtilisateurConnecte();
-    const [ancienneCle, setAncienneCle] = useState("");
-    const [nouvelleCle, setNouvelleCle] = useState("");
-    const [erreur, setErreur] = useState(null);
-    const [succes, setSucces] = useState(null);
-    const [envoi, setEnvoi] = useState(false);
 
-    async function changerCle(e) {
-        e.preventDefault();
-        setErreur(null);
-        setSucces(null);
-        setEnvoi(true);
-        try {
-            await apiFetch("/auth/administration/cle-acces", {
-                method: "PUT",
-                body: { ancienneCle, nouvelleCle },
-            });
-            setSucces("Clé d'accès mise à jour.");
-            setAncienneCle("");
-            setNouvelleCle("");
-        } catch (e) {
-            setErreur(e.message);
-        } finally {
-            setEnvoi(false);
-        }
+    function seDeconnecter() {
+        deconnecter();
+        navigate("/connexion");
     }
 
     return (
-        <div className="onglet-contenu">
-            <section className="box admin-section">
-                <h2>Mon profil</h2>
-                <p><strong>{utilisateur?.prenom} {utilisateur?.nom}</strong></p>
-                <p className="texte-discret">Administration</p>
-            </section>
+        <div className="sous-page-contenu">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div className="entete-role-avatar" style={{ background: "var(--primary-soft)", color: "var(--primary)", width: 64, height: 64, fontSize: 20 }}>
+                    {utilisateur?.prenom?.[0]}{utilisateur?.nom?.[0]}
+                </div>
+                <div>
+                    <strong style={{ display: "block", fontSize: 16, color: "var(--primary-navy)" }}>
+                        {utilisateur?.prenom} {utilisateur?.nom}
+                    </strong>
+                    <span className="texte-discret">Administrateur</span>
+                </div>
+            </div>
 
-            <section className="box admin-section">
-                <h2>Changer ma clé d'accès</h2>
-                <form onSubmit={changerCle} className="ligne-formulaire colonne">
-                    <input
-                        type="password"
-                        placeholder="Clé actuelle"
-                        value={ancienneCle}
-                        onChange={(e) => setAncienneCle(e.target.value)}
-                        required
-                    />
-                    <input
-                        type="password"
-                        placeholder="Nouvelle clé"
-                        value={nouvelleCle}
-                        onChange={(e) => setNouvelleCle(e.target.value)}
-                        required
-                    />
-                    <button type="submit" className="submit-button" disabled={envoi}>
-                        {envoi ? "Mise à jour..." : "Mettre à jour"}
-                    </button>
-                </form>
-                {erreur && <p style={{ color: "var(--danger)", fontSize: 13 }}>{erreur}</p>}
-                {succes && <p style={{ color: "var(--success)", fontSize: 13 }}>{succes}</p>}
-            </section>
+            <div className="ecran-auth-formulaire" style={{ background: "#fff", border: "1px solid var(--border)" }}>
+                <strong style={{ fontSize: 13, color: "var(--primary-navy)" }}>Informations personnelles</strong>
+                <div className="fiche-info">
+                    <div><span>Nom complet</span><strong>{utilisateur?.prenom} {utilisateur?.nom}</strong></div>
+                    <div><span>Rôle</span><strong>Administrateur</strong></div>
+                </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <button className="ligne-personne" style={{ cursor: "pointer", justifyContent: "space-between" }} onClick={() => navigate("/admin/cle-acces")}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span className="icone" style={{ color: "var(--primary)" }}>lock</span> Changer la clé d'accès
+                    </span>
+                    <span className="icone texte-discret">chevron_right</span>
+                </button>
+                <button className="ligne-personne" style={{ cursor: "pointer", justifyContent: "space-between" }} onClick={() => navigate("/admin/structure")}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span className="icone" style={{ color: "var(--primary)" }}>settings</span> Paramètres
+                    </span>
+                    <span className="icone texte-discret">chevron_right</span>
+                </button>
+                <button className="ligne-personne" style={{ cursor: "pointer", justifyContent: "space-between" }} onClick={seDeconnecter}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--danger)" }}>
+                        <span className="icone">logout</span> Déconnexion
+                    </span>
+                </button>
+            </div>
         </div>
     );
 }

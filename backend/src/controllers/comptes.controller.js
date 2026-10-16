@@ -33,6 +33,44 @@ export async function listerEtudiants(req, res) {
     res.json(etudiants);
 }
 
+// Liste unifiée étudiants + professeurs, pour la page "Activation des comptes".
+// (L'administration est un compte unique fixe, et le parent n'a pas de compte
+// propre — ils ne figurent donc pas dans cette liste.)
+export async function listerComptesTous(req, res) {
+    const { recherche, role } = req.query;
+    const motif = recherche ? `%${recherche}%` : "%";
+
+    const comptes = [];
+
+    if (!role || role === "etudiant") {
+        const [etudiants] = await pool.query(
+            `SELECT e.id, e.nom, e.prenom, e.email, u.actif, e.compte_valide
+       FROM etudiants e JOIN utilisateurs u ON u.id = e.id
+       WHERE e.nom LIKE ? OR e.prenom LIKE ? OR e.email LIKE ?`,
+            [motif, motif, motif]
+        );
+        etudiants.forEach((e) => comptes.push({
+            id: e.id, nom: e.nom, prenom: e.prenom, email: e.email, role: "etudiant",
+            statut: !e.compte_valide ? "en_attente" : (e.actif ? "actif" : "desactive"),
+        }));
+    }
+
+    if (!role || role === "professeur") {
+        const [professeurs] = await pool.query(
+            `SELECT p.id, p.nom, p.prenom, u.actif
+       FROM professeurs p JOIN utilisateurs u ON u.id = p.id
+       WHERE p.nom LIKE ? OR p.prenom LIKE ?`,
+            [motif, motif]
+        );
+        professeurs.forEach((p) => comptes.push({
+            id: p.id, nom: p.nom, prenom: p.prenom, email: null, role: "professeur",
+            statut: p.actif ? "actif" : "desactive",
+        }));
+    }
+
+    res.json(comptes);
+}
+
 export async function detailEtudiant(req, res) {
     const { id } = req.params;
     const [[etudiant]] = await pool.query(

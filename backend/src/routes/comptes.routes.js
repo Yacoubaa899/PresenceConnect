@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import {
-    listerEtudiants, detailEtudiant, envoyerMessageEtudiant,
+    listerEtudiants, detailEtudiant, envoyerMessageEtudiant, listerComptesTous,
     listerComptesEnAttente, validerCompte, refuserCompte,
     obtenirParametres, modifierControleCompte,
     suspendreCompte, reactiverCompte,
@@ -12,6 +12,7 @@ const router = Router();
 
 router.use(requireAuth, requireRole("administration"));
 
+router.get("/comptes", listerComptesTous);
 router.get("/etudiants", listerEtudiants);
 router.get("/etudiants/:id", detailEtudiant);
 router.post("/etudiants/:id/message", envoyerMessageEtudiant);

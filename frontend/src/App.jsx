@@ -23,6 +23,14 @@ import ParentAccueil from "./pages/parent/ParentAccueil.jsx";
 import ParentPublicationsLecture from "./pages/parent/ParentPublicationsLecture.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import AdminAccueil from "./pages/admin/AdminAccueil.jsx";
+import AdminEleves from "./pages/admin/AdminEleves.jsx";
+import AdminProfesseurs from "./pages/admin/AdminProfesseurs.jsx";
+import AdminAbsencesPage from "./pages/admin/AdminAbsencesPage.jsx";
+import AdminActivationComptes from "./pages/admin/AdminActivationComptes.jsx";
+import AdminJustificationsPage from "./pages/admin/AdminJustificationsPage.jsx";
+import AdminCleAccesPage from "./pages/admin/AdminCleAccesPage.jsx";
+import AdminAttribuerNotesPage from "./pages/admin/AdminAttribuerNotesPage.jsx";
+import AdminStructure from "./pages/admin/AdminStructure.jsx";
 import AdminPublications from "./pages/admin/AdminPublications.jsx";
 import AdminProfil from "./pages/admin/AdminProfil.jsx";
 import IndicateurHorsLigne from "./components/IndicateurHorsLigne.jsx";
@@ -45,6 +53,14 @@ export default function App() {
                     <Route path="planning" element={<AdminPublications categorie="planning" />} />
                     <Route path="bibliotheque" element={<AdminPublications categorie="bibliotheque" />} />
                     <Route path="profil" element={<AdminProfil />} />
+                    <Route path="eleves" element={<AdminEleves />} />
+                    <Route path="professeurs" element={<AdminProfesseurs />} />
+                    <Route path="absences" element={<AdminAbsencesPage />} />
+                    <Route path="activation-comptes" element={<AdminActivationComptes />} />
+                    <Route path="justifications" element={<AdminJustificationsPage />} />
+                    <Route path="cle-acces" element={<AdminCleAccesPage />} />
+                    <Route path="notes" element={<AdminAttribuerNotesPage />} />
+                    <Route path="structure" element={<AdminStructure />} />
                 </Route>
                 <Route path="/professeur" element={<ProfesseurLayout />}>
                     <Route index element={<ProfesseurAccueil />} />

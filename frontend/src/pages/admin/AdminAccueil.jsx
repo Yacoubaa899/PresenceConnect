@@ -1,511 +1,86 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api.js";
-import ProfilEtudiantModal from "./ProfilEtudiantModal.jsx";
-import FichePresenceModal from "./FichePresenceModal.jsx";
 
 export default function AdminAccueil() {
-    const [comptesEnAttente, setComptesEnAttente] = useState([]);
-    const [filieres, setFilieres] = useState([]);
-    const [classes, setClasses] = useState([]);
-    const [matieres, setMatieres] = useState([]);
-    const [etudiants, setEtudiants] = useState([]);
-    const [professeurs, setProfesseurs] = useState([]);
-    const [attributionMatiere, setAttributionMatiere] = useState({}); // { [profId]: matiereId }
-    const [recherche, setRecherche] = useState("");
-    const [parametres, setParametres] = useState(null);
+    const navigate = useNavigate();
+    const [stats, setStats] = useState({ eleves: 0, professeurs: 0, absences: 0, cours: 0 });
     const [chargement, setChargement] = useState(true);
-    const [erreur, setErreur] = useState(null);
-
-    const [nouvelleFiliere, setNouvelleFiliere] = useState("");
-    const [nouvelleClasse, setNouvelleClasse] = useState({ nom: "", filiereId: "", annee: "" });
-    const [nouvelleMatiere, setNouvelleMatiere] = useState({ nom: "", filiereId: "" });
-    const [dureeCle, setDureeCle] = useState("24");
-    const [derniereCle, setDerniereCle] = useState(null);
-    const [profilOuvert, setProfilOuvert] = useState(null); // { id, enAttente }
-    const [fiches, setFiches] = useState([]);
-    const [justificatifs, setJustificatifs] = useState([]);
-    const [statsParFiliere, setStatsParFiliere] = useState([]);
-    const [statsFiltre, setStatsFiltre] = useState({ filiereId: "", classeId: "", matiereId: "" });
-    const [statsGlobales, setStatsGlobales] = useState(null);
-    const [noteForm, setNoteForm] = useState({ etudiantId: "", matiereId: "", valeur: "" });
-    const [notesEnvoyees, setNotesEnvoyees] = useState([]);
-    const [succesNote, setSuccesNote] = useState(null);
-    const [ficheOuverte, setFicheOuverte] = useState(null);
 
     useEffect(() => {
-        chargerDonnees();
+        charger();
     }, []);
 
-    async function chargerDonnees() {
-        setChargement(true);
-        setErreur(null);
+    async function charger() {
         try {
-            const [attente, listeFilieres, listeClasses, listeMatieres, listeEtudiants, params, listeProfesseurs, listeFiches, listeJustificatifs] = await Promise.all([
-                apiFetch("/administration/comptes-en-attente"),
-                apiFetch("/structure/filieres"),
-                apiFetch("/structure/classes"),
-                apiFetch("/structure/matieres"),
+            const [etudiants, professeurs, absences, matieres] = await Promise.all([
                 apiFetch("/administration/etudiants"),
-                apiFetch("/administration/parametres"),
                 apiFetch("/administration/professeurs"),
-                apiFetch("/administration/fiches"),
-                apiFetch("/administration/justificatifs"),
+                apiFetch("/administration/absences"),
+                apiFetch("/structure/matieres"),
             ]);
-            setComptesEnAttente(attente);
-            setFilieres(listeFilieres);
-            setClasses(listeClasses);
-            setMatieres(listeMatieres);
-            setEtudiants(listeEtudiants);
-            setParametres(params);
-            setProfesseurs(listeProfesseurs);
-            setFiches(listeFiches);
-            setJustificatifs(listeJustificatifs);
-
-            const parFiliere = await apiFetch("/administration/statistiques/par-filiere");
-            setStatsParFiliere(parFiliere);
-            chargerStatsGlobales({});
-
-            setNotesEnvoyees(await apiFetch("/administration/notes"));
-        } catch (e) {
-            setErreur(e.message);
+            setStats({
+                eleves: etudiants.length,
+                professeurs: professeurs.length,
+                absences: absences.length,
+                cours: matieres.length,
+            });
+        } catch {
+            // En cas d'échec, on garde les compteurs à 0 plutôt que de bloquer la page.
         } finally {
             setChargement(false);
         }
     }
 
-    async function validerCompte(id) {
-        await apiFetch(`/administration/comptes-en-attente/${id}/valider`, { method: "POST" });
-        chargerDonnees();
-    }
-
-    async function refuserCompte(id) {
-        await apiFetch(`/administration/comptes-en-attente/${id}/refuser`, { method: "POST" });
-        chargerDonnees();
-    }
-
-    async function creerFiliere(e) {
-        e.preventDefault();
-        if (!nouvelleFiliere.trim()) return;
-        await apiFetch("/structure/filieres", { method: "POST", body: { nom: nouvelleFiliere } });
-        setNouvelleFiliere("");
-        chargerDonnees();
-    }
-
-    async function creerClasse(e) {
-        e.preventDefault();
-        const { nom, filiereId, annee } = nouvelleClasse;
-        if (!nom.trim() || !filiereId || !annee.trim()) return;
-        await apiFetch("/structure/classes", { method: "POST", body: { nom, filiereId, annee } });
-        setNouvelleClasse({ nom: "", filiereId: "", annee: "" });
-        chargerDonnees();
-    }
-
-    async function creerMatiere(e) {
-        e.preventDefault();
-        const { nom, filiereId } = nouvelleMatiere;
-        if (!nom.trim() || !filiereId) return;
-        await apiFetch("/structure/matieres", { method: "POST", body: { nom, filiereId } });
-        setNouvelleMatiere({ nom: "", filiereId: "" });
-        chargerDonnees();
-    }
-
-    async function genererCleProf(e) {
-        e.preventDefault();
-        const resultat = await apiFetch("/administration/cles-professeur", {
-            method: "POST",
-            body: { dureeHeures: Number(dureeCle) },
-        });
-        setDerniereCle(resultat);
-    }
-
-    async function rechercherEtudiants(valeur) {
-        setRecherche(valeur);
-        const resultat = await apiFetch(`/administration/etudiants?recherche=${encodeURIComponent(valeur)}`);
-        setEtudiants(resultat);
-    }
-
-    async function basculerControleCompte() {
-        const nouvelleValeur = !parametres.controle_compte_actif;
-        await apiFetch("/administration/parametres/controle-compte", {
-            method: "PUT",
-            body: { actif: nouvelleValeur },
-        });
-        setParametres({ ...parametres, controle_compte_actif: nouvelleValeur });
-    }
-
-    async function attribuerMatiere(profId) {
-        const matiereId = attributionMatiere[profId];
-        if (!matiereId) return;
-        await apiFetch(`/administration/professeurs/${profId}/matieres`, {
-            method: "POST",
-            body: { matiereId },
-        });
-        setAttributionMatiere({ ...attributionMatiere, [profId]: "" });
-        chargerDonnees();
-    }
-
-    async function retirerMatiere(profId, matiereId) {
-        await apiFetch(`/administration/professeurs/${profId}/matieres/${matiereId}`, { method: "DELETE" });
-        chargerDonnees();
-    }
-
-    async function traiterJustificatif(id, decision) {
-        await apiFetch(`/administration/justificatifs/${id}/traiter`, {
-            method: "POST",
-            body: { decision },
-        });
-        chargerDonnees();
-    }
-
-    async function chargerStatsGlobales(filtre) {
-        const params = new URLSearchParams();
-        if (filtre.filiereId) params.append("filiereId", filtre.filiereId);
-        if (filtre.classeId) params.append("classeId", filtre.classeId);
-        if (filtre.matiereId) params.append("matiereId", filtre.matiereId);
-        const resultat = await apiFetch(`/administration/statistiques/globales?${params.toString()}`);
-        setStatsGlobales(resultat);
-    }
-
-    async function envoyerNote(e) {
-        e.preventDefault();
-        setSuccesNote(null);
-        try {
-            await apiFetch("/administration/notes", { method: "POST", body: noteForm });
-            setSuccesNote("Note envoyée.");
-            setNoteForm({ etudiantId: "", matiereId: "", valeur: "" });
-            setNotesEnvoyees(await apiFetch("/administration/notes"));
-        } catch (e) {
-            setErreur(e.message);
-        }
-    }
-
-    function majFiltreStats(champ, valeur) {
-        const nouveauFiltre = { ...statsFiltre, [champ]: valeur };
-        setStatsFiltre(nouveauFiltre);
-        chargerStatsGlobales(nouveauFiltre);
-    }
-
-    if (chargement) return <p style={{ padding: 18 }}>Chargement...</p>;
-
     return (
-        <div className="onglet-contenu">
-            {erreur && <p style={{ color: "var(--danger)" }}>{erreur}</p>}
-
-            {/* Statistiques globales de présence */}
-            <section className="box admin-section">
-                <h2>Statistiques de présence</h2>
-
-                {statsParFiliere.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                        {statsParFiliere.map((f) => (
-                            <div key={f.id} className="ligne-liste">
-                                <span>{f.nom}</span>
-                                <strong>{f.total > 0 ? `${f.pourcentageAssiduite}%` : "—"}</strong>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                <div className="ligne-formulaire" style={{ marginBottom: 12 }}>
-                    <select value={statsFiltre.filiereId} onChange={(e) => majFiltreStats("filiereId", e.target.value)}>
-                        <option value="">Toutes les filières</option>
-                        {filieres.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                    </select>
-                    <select value={statsFiltre.classeId} onChange={(e) => majFiltreStats("classeId", e.target.value)}>
-                        <option value="">Toutes les classes</option>
-                        {classes.map((c) => <option key={c.id} value={c.id}>{c.nom}</option>)}
-                    </select>
-                    <select value={statsFiltre.matiereId} onChange={(e) => majFiltreStats("matiereId", e.target.value)}>
-                        <option value="">Toutes les matières</option>
-                        {matieres.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-                    </select>
+        <div className="tableau-bord">
+            <section>
+                <h2>Vue d'ensemble de l'établissement</h2>
+                <div className="stats-grille">
+                    <button className="carte-stat stat-eleves" onClick={() => navigate("/admin/eleves")}>
+                        <span className="carte-stat-icone"><span className="icone">groups</span></span>
+                        <span className="carte-stat-texte"><span>Élèves</span><strong>{chargement ? "…" : stats.eleves}</strong></span>
+                    </button>
+                    <button className="carte-stat stat-professeurs" onClick={() => navigate("/admin/professeurs")}>
+                        <span className="carte-stat-icone"><span className="icone">person</span></span>
+                        <span className="carte-stat-texte"><span>Professeurs</span><strong>{chargement ? "…" : stats.professeurs}</strong></span>
+                    </button>
+                    <button className="carte-stat stat-absences" onClick={() => navigate("/admin/absences")}>
+                        <span className="carte-stat-icone"><span className="icone">event_busy</span></span>
+                        <span className="carte-stat-texte"><span>Absences</span><strong>{chargement ? "…" : stats.absences}</strong></span>
+                    </button>
+                    <button className="carte-stat stat-cours" onClick={() => navigate("/admin/structure")}>
+                        <span className="carte-stat-icone"><span className="icone">menu_book</span></span>
+                        <span className="carte-stat-texte"><span>Cours</span><strong>{chargement ? "…" : stats.cours}</strong></span>
+                    </button>
                 </div>
-
-                {statsGlobales && (
-                    <div className="gauge-row">
-                        <div className="gauge" style={{ background: `conic-gradient(var(--success) 0 ${statsGlobales.pourcentageAssiduite}%, var(--border) ${statsGlobales.pourcentageAssiduite}% 100%)` }}>
-                            <div className="gauge-hole">{statsGlobales.pourcentageAssiduite}%</div>
-                        </div>
-                        <div className="texte-discret">
-                            {statsGlobales.presents} présent(s) · {statsGlobales.retards} retard(s) · {statsGlobales.absents} absence(s)<br />
-                            sur {statsGlobales.total} enregistrement(s)
-                        </div>
-                    </div>
-                )}
             </section>
 
-            {parametres && (
-                <section className="box admin-section">
-                    <h2>Contrôle de compte</h2>
-                    <div className="ligne-reglage">
-                        <span className="texte-discret">
-                            {parametres.controle_compte_actif
-                                ? "Les nouvelles inscriptions attendent une validation."
-                                : "Les nouvelles inscriptions sont automatiquement actives."}
-                        </span>
-                        <button
-                            className={"interrupteur" + (parametres.controle_compte_actif ? " actif" : "")}
-                            onClick={basculerControleCompte}
-                        >
-                            <span className="interrupteur-bouton" />
-                        </button>
-                    </div>
-                </section>
-            )}
-
-            <section className="box admin-section">
-                <h2>Comptes en attente ({comptesEnAttente.length})</h2>
-                {comptesEnAttente.length === 0 && <p className="texte-discret">Aucun compte en attente.</p>}
-                {comptesEnAttente.map((c) => (
-                    <div key={c.id} className="ligne-liste ligne-cliquable" onClick={() => setProfilOuvert({ id: c.id, enAttente: true })}>
-                        <div>
-                            <strong>{c.prenom} {c.nom}</strong>
-                            <div className="texte-discret">{c.filiere_nom} — {c.classe_nom} — n° {c.numero_etudiant}</div>
-                        </div>
-                        <span className="icone texte-discret">chevron_right</span>
-                    </div>
-                ))}
+            <section>
+                <h2>Actions rapides</h2>
+                <div className="actions-grille">
+                    <button className="bouton-action-rapide action-bleu" onClick={() => navigate("/admin/activation-comptes")}>
+                        <span className="icone">person_check</span>
+                        Activer un compte
+                    </button>
+                    <button className="bouton-action-rapide action-violet" onClick={() => navigate("/admin/professeurs")}>
+                        <span className="icone">assignment</span>
+                        Attribuer une matière
+                    </button>
+                    <button className="bouton-action-rapide action-orange" onClick={() => navigate("/admin/notes")}>
+                        <span className="icone">edit_note</span>
+                        Attribuer des notes
+                    </button>
+                    <button className="bouton-action-rapide action-rose" onClick={() => navigate("/admin/justifications")}>
+                        <span className="icone">fact_check</span>
+                        Gérer les justifications
+                    </button>
+                    <button className="bouton-action-rapide action-sarcelle" onClick={() => navigate("/admin/cle-acces")}>
+                        <span className="icone">vpn_key</span>
+                        Clé d'accès
+                    </button>
+                </div>
             </section>
-
-            <section className="box admin-section">
-                <h2>Générer une clé professeur</h2>
-                <form onSubmit={genererCleProf} className="ligne-formulaire">
-                    <select value={dureeCle} onChange={(e) => setDureeCle(e.target.value)}>
-                        <option value="24">Valable 24h</option>
-                        <option value="48">Valable 48h</option>
-                        <option value="168">Valable 7 jours</option>
-                    </select>
-                    <button type="submit" className="submit-button" style={{ width: "auto" }}>Générer</button>
-                </form>
-                {derniereCle && (
-                    <p className="texte-succes">
-                        Clé générée : <strong>{derniereCle.cle}</strong> — à transmettre au professeur (elle ne sera plus affichée).
-                    </p>
-                )}
-            </section>
-
-            <section className="box admin-section">
-                <h2>Filières ({filieres.length})</h2>
-                <ul className="liste-simple">
-                    {filieres.map((f) => <li key={f.id}>{f.nom}</li>)}
-                </ul>
-                <form onSubmit={creerFiliere} className="ligne-formulaire">
-                    <input placeholder="Nom de la filière" value={nouvelleFiliere} onChange={(e) => setNouvelleFiliere(e.target.value)} />
-                    <button type="submit" className="submit-button" style={{ width: "auto" }}>Ajouter</button>
-                </form>
-            </section>
-
-            <section className="box admin-section">
-                <h2>Classes ({classes.length})</h2>
-                <ul className="liste-simple">
-                    {classes.map((c) => <li key={c.id}>{c.nom} — {c.filiere_nom} ({c.annee})</li>)}
-                </ul>
-                <form onSubmit={creerClasse} className="ligne-formulaire colonne">
-                    <input placeholder="Nom de la classe" value={nouvelleClasse.nom}
-                        onChange={(e) => setNouvelleClasse({ ...nouvelleClasse, nom: e.target.value })} />
-                    <select value={nouvelleClasse.filiereId}
-                        onChange={(e) => setNouvelleClasse({ ...nouvelleClasse, filiereId: e.target.value })}>
-                        <option value="">Filière...</option>
-                        {filieres.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                    </select>
-                    <input placeholder="Année (ex: 2026-2027)" value={nouvelleClasse.annee}
-                        onChange={(e) => setNouvelleClasse({ ...nouvelleClasse, annee: e.target.value })} />
-                    <button type="submit" className="submit-button">Ajouter la classe</button>
-                </form>
-            </section>
-
-            <section className="box admin-section">
-                <h2>Matières ({matieres.length})</h2>
-                <ul className="liste-simple">
-                    {matieres.map((m) => <li key={m.id}>{m.nom} — {m.filiere_nom}</li>)}
-                </ul>
-                <form onSubmit={creerMatiere} className="ligne-formulaire colonne">
-                    <input placeholder="Nom de la matière" value={nouvelleMatiere.nom}
-                        onChange={(e) => setNouvelleMatiere({ ...nouvelleMatiere, nom: e.target.value })} />
-                    <select value={nouvelleMatiere.filiereId}
-                        onChange={(e) => setNouvelleMatiere({ ...nouvelleMatiere, filiereId: e.target.value })}>
-                        <option value="">Filière...</option>
-                        {filieres.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                    </select>
-                    <button type="submit" className="submit-button">Ajouter la matière</button>
-                </form>
-            </section>
-
-            {/* Professeurs et attribution de matières */}
-            <section className="box admin-section">
-                <h2>Professeurs ({professeurs.length})</h2>
-                {professeurs.length === 0 && <p className="texte-discret">Aucun professeur pour l'instant.</p>}
-                {professeurs.map((p) => (
-                    <div key={p.id} className="fiche-prof">
-                        <div className="ligne-liste" style={{ borderTop: "none", paddingTop: 0 }}>
-                            <div>
-                                <strong>{p.prenom} {p.nom}</strong>
-                                <div className="texte-discret">{p.filiere_nom}{!p.actif && " — suspendu"}</div>
-                            </div>
-                        </div>
-
-                        <div className="tags-matieres">
-                            {p.matieres.length === 0 && <span className="texte-discret">Aucune matière attribuée.</span>}
-                            {p.matieres.map((m) => (
-                                <span key={m.id} className="tag-matiere">
-                                    {m.nom}
-                                    <button onClick={() => retirerMatiere(p.id, m.id)} aria-label="Retirer">×</button>
-                                </span>
-                            ))}
-                        </div>
-
-                        <div className="ligne-formulaire" style={{ marginTop: 8 }}>
-                            <select
-                                value={attributionMatiere[p.id] || ""}
-                                onChange={(e) => setAttributionMatiere({ ...attributionMatiere, [p.id]: e.target.value })}
-                            >
-                                <option value="">Attribuer une matière...</option>
-                                {matieres.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-                            </select>
-                            <button className="submit-button" style={{ width: "auto" }} onClick={() => attribuerMatiere(p.id)}>
-                                Attribuer
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </section>
-
-            <section className="box admin-section">
-                <h2>Étudiants ({etudiants.length})</h2>
-                <input
-                    className="champ-recherche"
-                    placeholder="Rechercher par nom ou filière..."
-                    value={recherche}
-                    onChange={(e) => rechercherEtudiants(e.target.value)}
-                />
-                <ul className="liste-simple">
-                    {etudiants.map((e) => (
-                        <li key={e.id} className="ligne-cliquable" onClick={() => setProfilOuvert({ id: e.id, enAttente: false })}>
-                            {e.prenom} {e.nom} — {e.filiere_nom} / {e.classe_nom}
-                            {!e.actif && <span className="etiquette-suspendu"> (suspendu)</span>}
-                        </li>
-                    ))}
-                    {etudiants.length === 0 && <li className="texte-discret">Aucun résultat.</li>}
-                </ul>
-            </section>
-
-            {/* Fiches de présence / absences */}
-            <section className="box admin-section">
-                <h2>Fiches de présence ({fiches.length})</h2>
-                {fiches.length === 0 && <p className="texte-discret">Aucun cours clôturé pour l'instant.</p>}
-                {fiches.map((f) => (
-                    <div key={f.id} className="ligne-liste ligne-cliquable" onClick={() => setFicheOuverte(f.id)}>
-                        <div>
-                            <strong>{f.matiere_nom}</strong>
-                            <div className="texte-discret">
-                                {f.prof_prenom} {f.prof_nom} — {f.filiere_nom} / {f.classe_nom}
-                            </div>
-                            <div className="texte-discret">
-                                {new Date(f.date_debut).toLocaleDateString("fr-FR")} à{" "}
-                                {new Date(f.date_debut).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                                {" — "}{f.total_present} présents · {f.total_retard} retards · {f.total_absent} absents
-                            </div>
-                        </div>
-                        <span className="icone texte-discret">chevron_right</span>
-                    </div>
-                ))}
-            </section>
-
-            {/* Justificatifs d'absence */}
-            <section className="box admin-section">
-                <h2>Justificatifs ({justificatifs.filter((j) => j.statut === "en_attente").length} en attente)</h2>
-                {justificatifs.length === 0 && <p className="texte-discret">Aucun justificatif envoyé.</p>}
-                {justificatifs.map((j) => (
-                    <div key={j.id} className="ligne-liste" style={{ flexDirection: "column", alignItems: "stretch" }}>
-                        <div>
-                            <strong>{j.prenom} {j.nom}</strong>
-                            <div className="texte-discret">
-                                {j.matiere_nom ? (
-                                    <>{j.matiere_nom} — {j.prof_prenom} {j.prof_nom} — {new Date(j.date_debut).toLocaleDateString("fr-FR")} —{" "}
-                                        {j.statut_presence === "absent" ? "Absent" : "Retard"}</>
-                                ) : "Cours non précisé"}
-                            </div>
-
-                            {j.fichier && j.fichier.match(/\.(png|jpe?g|webp)$/i) && (
-                                <img src={`http://localhost:4000${j.fichier}`} alt="" className="apercu-image" />
-                            )}
-                            {j.fichier && j.fichier.match(/\.pdf$/i) && (
-                                <a href={`http://localhost:4000${j.fichier}`} target="_blank" rel="noreferrer" className="lien-fichier">
-                                    <span className="icone" style={{ fontSize: 15 }}>picture_as_pdf</span>
-                                    Voir le fichier
-                                </a>
-                            )}
-                            {j.commentaire && <div>{j.commentaire}</div>}
-
-                            <div className="texte-discret">Envoyé le {new Date(j.date_soumission).toLocaleDateString("fr-FR")}</div>
-                        </div>
-
-                        <div className="actions-ligne" style={{ marginTop: 8 }}>
-                            {j.statut === "en_attente" ? (
-                                <>
-                                    <button className="bouton-petit succes" onClick={() => traiterJustificatif(j.id, "valide")}>Valider</button>
-                                    <button className="bouton-petit danger" onClick={() => traiterJustificatif(j.id, "refuse")}>Refuser</button>
-                                </>
-                            ) : (
-                                <span className={"tag-statut " + (j.statut === "valide" ? "present" : "absent")}>
-                                    {j.statut === "valide" ? "Validé" : "Refusé"}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </section>
-
-            {/* Notes */}
-            <section className="box admin-section">
-                <h2>Envoyer une note</h2>
-                <form onSubmit={envoyerNote} className="ligne-formulaire colonne">
-                    <select value={noteForm.etudiantId} onChange={(e) => setNoteForm({ ...noteForm, etudiantId: e.target.value })} required>
-                        <option value="">Étudiant...</option>
-                        {etudiants.map((e) => <option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>)}
-                    </select>
-                    <select value={noteForm.matiereId} onChange={(e) => setNoteForm({ ...noteForm, matiereId: e.target.value })} required>
-                        <option value="">Matière...</option>
-                        {matieres.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
-                    </select>
-                    <input
-                        type="number" min="0" max="20" step="0.5" placeholder="Note sur 20"
-                        value={noteForm.valeur}
-                        onChange={(e) => setNoteForm({ ...noteForm, valeur: e.target.value })}
-                        required
-                    />
-                    <button type="submit" className="submit-button">Envoyer la note</button>
-                    {succesNote && <p style={{ color: "var(--success)", fontSize: 13 }}>{succesNote}</p>}
-                </form>
-
-                {notesEnvoyees.length > 0 && (
-                    <div style={{ marginTop: 14 }}>
-                        {notesEnvoyees.map((n) => (
-                            <div key={n.id} className="ligne-liste">
-                                <span>{n.prenom} {n.nom} — {n.matiere_nom}</span>
-                                <strong>{n.valeur}/20</strong>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </section>
-
-            {profilOuvert && (
-                <ProfilEtudiantModal
-                    etudiantId={profilOuvert.id}
-                    afficherValidation={profilOuvert.enAttente}
-                    onFermer={() => setProfilOuvert(null)}
-                    onDecision={async (action, id) => {
-                        if (action === "valider") await validerCompte(id);
-                        else await refuserCompte(id);
-                        setProfilOuvert(null);
-                    }}
-                />
-            )}
-
-            {ficheOuverte && (
-                <FichePresenceModal ficheId={ficheOuverte} onFermer={() => setFicheOuverte(null)} />
-            )}
         </div>
     );
 }
