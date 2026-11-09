@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../utils/api.js";
+import CarteActualite from "../../components/CarteActualite.jsx";
 
 const LIBELLES = {
     info: "Info",
@@ -14,13 +15,15 @@ export default function AdminPublications({ categorie }) {
     const [erreur, setErreur] = useState(null);
 
     const [typeContenu, setTypeContenu] = useState("texte");
+    const [titre, setTitre] = useState("");
     const [texte, setTexte] = useState("");
     const [dureeExpiration, setDureeExpiration] = useState("illimitee");
     const [estProgrammee, setEstProgrammee] = useState(false);
     const [dateProgrammee, setDateProgrammee] = useState("");
     const [fichier, setFichier] = useState(null);
+    const [photoCouverture, setPhotoCouverture] = useState(null);
 
-    const [enEdition, setEnEdition] = useState(null); // id de la publication en cours de modification
+    const [enEdition, setEnEdition] = useState(null);
     const [editionTexte, setEditionTexte] = useState("");
     const [editionDate, setEditionDate] = useState("");
 
@@ -60,16 +63,20 @@ export default function AdminPublications({ categorie }) {
         const donnees = new FormData();
         donnees.append("categorie", categorie);
         donnees.append("typeContenu", typeContenu);
+        if (titre) donnees.append("titre", titre);
         if (texte) donnees.append("texte", texte);
         donnees.append("estProgrammee", estProgrammee);
         if (estProgrammee) donnees.append("dateProgrammee", dateProgrammee);
         donnees.append("dureeExpiration", dureeExpiration);
         if (fichier) donnees.append("fichier", fichier);
+        if (photoCouverture) donnees.append("photoCouverture", photoCouverture);
 
         try {
             const resultat = await apiFetch("/publications/admin", { method: "POST", body: donnees });
+            setTitre("");
             setTexte("");
             setFichier(null);
+            setPhotoCouverture(null);
             setEstProgrammee(false);
             setDateProgrammee("");
             setSucces(resultat.message);
@@ -89,7 +96,6 @@ export default function AdminPublications({ categorie }) {
     function commencerEdition(p) {
         setEnEdition(p.id);
         setEditionTexte(p.texte || "");
-        // datetime-local a besoin du format "AAAA-MM-JJTHH:mm"
         setEditionDate(new Date(p.date_programmee).toISOString().slice(0, 16));
     }
 
@@ -107,11 +113,15 @@ export default function AdminPublications({ categorie }) {
             <section className="box admin-section">
                 <h2>Publier dans {LIBELLES[categorie]}</h2>
                 <form onSubmit={publier} className="ligne-formulaire colonne">
-                    <select value={typeContenu} onChange={(e) => { setTypeContenu(e.target.value); setFichier(null); }}>
+                    <select value={typeContenu} onChange={(e) => { setTypeContenu(e.target.value); setFichier(null); setPhotoCouverture(null); }}>
                         <option value="texte">Texte</option>
                         <option value="image">Image</option>
                         <option value="pdf">PDF</option>
                     </select>
+
+                    {typeContenu !== "texte" && (
+                        <input placeholder="Titre de la publication" value={titre} onChange={(e) => setTitre(e.target.value)} />
+                    )}
 
                     {typeContenu === "texte" && (
                         <textarea
@@ -125,11 +135,28 @@ export default function AdminPublications({ categorie }) {
 
                     {typeContenu !== "texte" && (
                         <>
-                            <input
-                                type="file"
-                                accept={typeContenu === "pdf" ? "application/pdf" : "image/*"}
-                                onChange={(e) => setFichier(e.target.files[0] || null)}
-                            />
+                            <label className="texte-discret">
+                                Fichier ({typeContenu === "pdf" ? "PDF" : "image"})
+                                <input
+                                    type="file"
+                                    accept={typeContenu === "pdf" ? "application/pdf" : "image/*"}
+                                    onChange={(e) => setFichier(e.target.files[0] || null)}
+                                    style={{ display: "block", marginTop: 4 }}
+                                />
+                            </label>
+
+                            {typeContenu === "pdf" && (
+                                <label className="texte-discret">
+                                    Photo de couverture (facultative — une image par défaut sera utilisée sinon)
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setPhotoCouverture(e.target.files[0] || null)}
+                                        style={{ display: "block", marginTop: 4 }}
+                                    />
+                                </label>
+                            )}
+
                             <textarea
                                 className="champ-texte"
                                 placeholder="Texte d'accompagnement (facultatif)..."
@@ -185,7 +212,7 @@ export default function AdminPublications({ categorie }) {
                                 </div>
                             ) : (
                                 <>
-                                    <div>{p.texte || `[${p.type_contenu}]`}</div>
+                                    <div>{p.titre || p.texte || `[${p.type_contenu}]`}</div>
                                     <div className="texte-discret">
                                         Publication prévue le {new Date(p.date_programmee).toLocaleDateString("fr-FR")} à{" "}
                                         {new Date(p.date_programmee).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
@@ -202,36 +229,17 @@ export default function AdminPublications({ categorie }) {
                 </section>
             )}
 
-            <section className="box admin-section">
-                <h2>Publications actives</h2>
+            <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <h2 style={{ padding: "0 2px" }}>Publications actives</h2>
                 {chargement && <p className="texte-discret">Chargement...</p>}
                 {erreur && <p style={{ color: "var(--danger)" }}>{erreur}</p>}
                 {!chargement && publications.length === 0 && <p className="texte-discret">Aucune publication pour l'instant.</p>}
                 {publications.map((p) => (
-                    <div key={p.id} className="ligne-liste" style={{ flexDirection: "column", alignItems: "stretch" }}>
-                        <div>
-                            {p.texte && <div>{p.texte}</div>}
-
-                            {p.fichier && p.type_contenu === "image" && (
-                                <img src={`http://localhost:4000${p.fichier}`} alt="" className="apercu-image" />
-                            )}
-
-                            {p.fichier && p.type_contenu === "pdf" && (
-                                <a href={`http://localhost:4000${p.fichier}`} target="_blank" rel="noreferrer" className="lien-fichier">
-                                    <span className="icone" style={{ fontSize: 15 }}>picture_as_pdf</span>
-                                    Voir le fichier
-                                </a>
-                            )}
-
-                            <div className="texte-discret">
-                                Publié le {new Date(p.date_publication).toLocaleDateString("fr-FR")}
-                                {p.date_expiration && ` — expire le ${new Date(p.date_expiration).toLocaleDateString("fr-FR")}`}
-                            </div>
-                        </div>
-                        <div className="actions-ligne" style={{ marginTop: 6 }}>
-                            <button className="bouton-petit danger" onClick={() => supprimer(p.id)}>Supprimer</button>
-                        </div>
-                    </div>
+                    <CarteActualite
+                        key={p.id}
+                        publication={p}
+                        action={<button className="bouton-petit danger" onClick={() => supprimer(p.id)}>Supprimer</button>}
+                    />
                 ))}
             </section>
         </div>

@@ -12,6 +12,14 @@ import {
 
 const router = Router();
 
+// Accepte deux fichiers possibles : le contenu lui-même ("fichier",
+// une image ou un PDF) et, pour un PDF, une photo de couverture
+// facultative ("photoCouverture").
+const deuxFichiers = uploadPublication.fields([
+    { name: "fichier", maxCount: 1 },
+    { name: "photoCouverture", maxCount: 1 },
+]);
+
 // Lecture : tous les rôles connectés peuvent consulter une catégorie.
 router.get("/:categorie", requireAuth, listerPublications);
 
@@ -26,15 +34,13 @@ router.put(
     "/:id",
     requireAuth,
     requireRole("administration", "professeur"),
-    uploadPublication.single("fichier"),
+    deuxFichiers,
     modifierPublicationProgrammee
 );
 
 // Création : admin sur les 3 catégories, prof uniquement sur bibliothèque.
-// uploadPublication.single("fichier") lit le fichier envoyé (champ "fichier")
-// s'il y en a un ; les publications en texte simple n'en envoient pas.
-router.post("/admin", requireAuth, requireRole("administration"), uploadPublication.single("fichier"), creerPublicationAdmin);
-router.post("/professeur", requireAuth, requireRole("professeur"), uploadPublication.single("fichier"), creerPublicationProfesseur);
+router.post("/admin", requireAuth, requireRole("administration"), deuxFichiers, creerPublicationAdmin);
+router.post("/professeur", requireAuth, requireRole("professeur"), deuxFichiers, creerPublicationProfesseur);
 
 // Suppression : admin ou prof auteur (vérifié dans le contrôleur).
 router.delete("/:id", requireAuth, requireRole("administration", "professeur"), supprimerPublication);

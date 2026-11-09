@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "../../utils/api.js";
+import { apiFetch, getUtilisateurConnecte } from "../../utils/api.js";
+import CarteActualite from "../../components/CarteActualite.jsx";
 
 export default function ProfesseurBibliotheque() {
+    const utilisateur = getUtilisateurConnecte();
     const [publications, setPublications] = useState([]);
     const [matieres, setMatieres] = useState([]);
     const [chargement, setChargement] = useState(true);
@@ -9,8 +11,10 @@ export default function ProfesseurBibliotheque() {
 
     const [matiereId, setMatiereId] = useState("");
     const [typeContenu, setTypeContenu] = useState("texte");
+    const [titre, setTitre] = useState("");
     const [texte, setTexte] = useState("");
     const [fichier, setFichier] = useState(null);
+    const [photoCouverture, setPhotoCouverture] = useState(null);
     const [dureeExpiration, setDureeExpiration] = useState("illimitee");
     const [envoiEnCours, setEnvoiEnCours] = useState(false);
     const [succes, setSucces] = useState(null);
@@ -48,14 +52,18 @@ export default function ProfesseurBibliotheque() {
         try {
             const donnees = new FormData();
             donnees.append("typeContenu", typeContenu);
+            if (titre) donnees.append("titre", titre);
             if (texte) donnees.append("texte", texte);
             donnees.append("matiereId", matiereId);
             donnees.append("dureeExpiration", dureeExpiration);
             if (fichier) donnees.append("fichier", fichier);
+            if (photoCouverture) donnees.append("photoCouverture", photoCouverture);
 
             const resultat = await apiFetch("/publications/professeur", { method: "POST", body: donnees });
+            setTitre("");
             setTexte("");
             setFichier(null);
+            setPhotoCouverture(null);
             setSucces(resultat.message || "Publié.");
             charger();
         } catch (e) {
@@ -82,19 +90,34 @@ export default function ProfesseurBibliotheque() {
                             <option value="">Matière...</option>
                             {matieres.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
                         </select>
-                        <select value={typeContenu} onChange={(e) => { setTypeContenu(e.target.value); setFichier(null); }}>
+                        <select value={typeContenu} onChange={(e) => { setTypeContenu(e.target.value); setFichier(null); setPhotoCouverture(null); }}>
                             <option value="texte">Texte</option>
                             <option value="pdf">PDF</option>
                             <option value="image">Image</option>
                         </select>
+
+                        {typeContenu !== "texte" && (
+                            <input placeholder="Titre de la publication" value={titre} onChange={(e) => setTitre(e.target.value)} />
+                        )}
+
                         {typeContenu === "texte" ? (
                             <textarea className="champ-texte" rows={3} placeholder="Contenu du cours..." value={texte} onChange={(e) => setTexte(e.target.value)} />
                         ) : (
                             <>
-                                <input type="file" accept={typeContenu === "pdf" ? "application/pdf" : "image/*"} onChange={(e) => setFichier(e.target.files[0] || null)} />
+                                <label className="texte-discret">
+                                    Fichier ({typeContenu === "pdf" ? "PDF" : "image"})
+                                    <input type="file" accept={typeContenu === "pdf" ? "application/pdf" : "image/*"} onChange={(e) => setFichier(e.target.files[0] || null)} style={{ display: "block", marginTop: 4 }} />
+                                </label>
+                                {typeContenu === "pdf" && (
+                                    <label className="texte-discret">
+                                        Photo de couverture (facultative — une image par défaut sera utilisée sinon)
+                                        <input type="file" accept="image/*" onChange={(e) => setPhotoCouverture(e.target.files[0] || null)} style={{ display: "block", marginTop: 4 }} />
+                                    </label>
+                                )}
                                 <textarea className="champ-texte" rows={2} placeholder="Texte d'accompagnement (facultatif)..." value={texte} onChange={(e) => setTexte(e.target.value)} />
                             </>
                         )}
+
                         <select value={dureeExpiration} onChange={(e) => setDureeExpiration(e.target.value)}>
                             <option value="illimitee">Durée illimitée</option>
                             <option value="7_jours">7 jours</option>
@@ -109,25 +132,20 @@ export default function ProfesseurBibliotheque() {
                 {succes && <p style={{ color: "var(--success)", fontSize: 13 }}>{succes}</p>}
             </section>
 
-            <section className="box admin-section">
-                <h2>Mes publications</h2>
+            <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <h2 style={{ padding: "0 2px" }}>Bibliothèque</h2>
                 {chargement && <p className="texte-discret">Chargement...</p>}
+                {!chargement && publications.length === 0 && <p className="texte-discret">Rien pour l'instant.</p>}
                 {publications.map((p) => (
-                    <div key={p.id} className="ligne-liste" style={{ flexDirection: "column", alignItems: "stretch" }}>
-                        <div>
-                            {p.texte && <div>{p.texte}</div>}
-                            {p.fichier && p.type_contenu === "image" && (
-                                <img src={`http://localhost:4000${p.fichier}`} alt="" className="apercu-image" />
-                            )}
-                            {p.fichier && p.type_contenu === "pdf" && (
-                                <a href={`http://localhost:4000${p.fichier}`} target="_blank" rel="noreferrer" className="lien-fichier">
-                                    <span className="icone" style={{ fontSize: 15 }}>picture_as_pdf</span>
-                                    Voir le fichier
-                                </a>
-                            )}
-                        </div>
-                        <button className="bouton-petit danger" onClick={() => supprimer(p.id)} style={{ marginTop: 6, alignSelf: "flex-start" }}>Supprimer</button>
-                    </div>
+                    <CarteActualite
+                        key={p.id}
+                        publication={p}
+                        action={
+                            p.auteur_professeur_id === utilisateur?.id ? (
+                                <button className="bouton-petit danger" onClick={() => supprimer(p.id)}>Supprimer</button>
+                            ) : null
+                        }
+                    />
                 ))}
             </section>
         </div>

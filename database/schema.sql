@@ -215,8 +215,10 @@ CREATE TABLE notes (
 CREATE TABLE publications (
   id                    INT AUTO_INCREMENT PRIMARY KEY,
   categorie             ENUM('info','planning','bibliotheque') NOT NULL,
+  titre                 VARCHAR(150),             -- affiché sur les publications avec photo/PDF
   type_contenu          ENUM('pdf','image','texte') NOT NULL,
   fichier               VARCHAR(255),             -- chemin du PDF/image, NULL si type = texte
+  photo_couverture      VARCHAR(255),             -- photo d'illustration facultative pour un PDF
   texte                 TEXT,                     -- texte seul, ou texte d'accompagnement du PDF/image
   auteur_admin_id       INT NULL,                 -- admin, pour info/planning/bibliotheque
   auteur_professeur_id  INT NULL,                 -- prof, uniquement pour bibliotheque

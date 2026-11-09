@@ -16,10 +16,12 @@ export async function listerPublications(req, res) {
     // On ne renvoie que les publications déjà publiées et non expirées.
     const [publications] = await pool.query(
         `SELECT p.*, a.nom AS admin_nom, a.prenom AS admin_prenom,
-            pr.nom AS prof_nom, pr.prenom AS prof_prenom
+            pr.nom AS prof_nom, pr.prenom AS prof_prenom,
+            m.nom AS matiere_nom
      FROM publications p
      LEFT JOIN administrateurs a ON a.id = p.auteur_admin_id
      LEFT JOIN professeurs pr ON pr.id = p.auteur_professeur_id
+     LEFT JOIN matieres m ON m.id = p.matiere_id
      WHERE p.categorie = ?
        AND p.date_publication IS NOT NULL
        AND (p.date_expiration IS NULL OR p.date_expiration > NOW())
@@ -34,13 +36,15 @@ export async function listerPublications(req, res) {
 // ============================================================
 
 export async function creerPublicationAdmin(req, res) {
-    const { categorie, typeContenu, texte, estProgrammee, dateProgrammee, dureeExpiration } = req.body;
+    const { categorie, titre, typeContenu, texte, estProgrammee, dateProgrammee, dureeExpiration } = req.body;
 
     if (!CATEGORIES_VALIDES.includes(categorie) || !TYPES_VALIDES.includes(typeContenu)) {
         return res.status(400).json({ erreur: "Catégorie ou type de contenu invalide." });
     }
 
-    const fichier = req.file ? `/uploads/${req.file.filename}` : null;
+    const fichier = req.files?.fichier?.[0] ? `/uploads/${req.files.fichier[0].filename}` : null;
+    const photoCouverture = req.files?.photoCouverture?.[0] ? `/uploads/${req.files.photoCouverture[0].filename}` : null;
+
     if (typeContenu !== "texte" && !fichier) {
         return res.status(400).json({ erreur: "Un fichier est requis pour ce type de contenu." });
     }
@@ -51,10 +55,10 @@ export async function creerPublicationAdmin(req, res) {
 
     const [resultat] = await pool.query(
         `INSERT INTO publications
-      (categorie, type_contenu, fichier, texte, auteur_admin_id, date_publication, est_programmee, date_programmee, date_expiration)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (categorie, titre, type_contenu, fichier, photo_couverture, texte, auteur_admin_id, date_publication, est_programmee, date_programmee, date_expiration)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-            categorie, typeContenu, fichier || null, texte || null, req.utilisateur.id,
+            categorie, titre || null, typeContenu, fichier || null, photoCouverture || null, texte || null, req.utilisateur.id,
             publieMaintenant ? new Date() : null,
             programmee,
             programmee ? dateProgrammee : null,
@@ -94,12 +98,12 @@ export async function listerPublicationsProgrammees(req, res) {
 
 // ============================================================
 // MODIFICATION — d'une publication programmée, tant qu'elle n'est
-// pas encore publiée (texte, fichier, date programmée, expiration).
+// pas encore publiée (titre, texte, fichier, date programmée, expiration).
 // ============================================================
 
 export async function modifierPublicationProgrammee(req, res) {
     const { id } = req.params;
-    const { texte, dateProgrammee, dureeExpiration } = req.body;
+    const { titre, texte, dateProgrammee, dureeExpiration } = req.body;
 
     const [[publication]] = await pool.query("SELECT * FROM publications WHERE id = ?", [id]);
     if (!publication) return res.status(404).json({ erreur: "Publication introuvable." });
@@ -114,14 +118,15 @@ export async function modifierPublicationProgrammee(req, res) {
     }
 
     const nouvelleDateProgrammee = dateProgrammee || publication.date_programmee;
-    const fichier = req.file ? `/uploads/${req.file.filename}` : publication.fichier;
+    const fichier = req.files?.fichier?.[0] ? `/uploads/${req.files.fichier[0].filename}` : publication.fichier;
+    const photoCouverture = req.files?.photoCouverture?.[0] ? `/uploads/${req.files.photoCouverture[0].filename}` : publication.photo_couverture;
     const dateExpiration = dureeExpiration
         ? calculerDateExpiration(dureeExpiration, nouvelleDateProgrammee)
         : publication.date_expiration;
 
     await pool.query(
-        "UPDATE publications SET texte = ?, fichier = ?, date_programmee = ?, date_expiration = ? WHERE id = ?",
-        [texte ?? publication.texte, fichier, nouvelleDateProgrammee, dateExpiration, id]
+        "UPDATE publications SET titre = ?, texte = ?, fichier = ?, photo_couverture = ?, date_programmee = ?, date_expiration = ? WHERE id = ?",
+        [titre ?? publication.titre, texte ?? publication.texte, fichier, photoCouverture, nouvelleDateProgrammee, dateExpiration, id]
     );
 
     res.json({ message: "Publication programmée mise à jour." });
@@ -132,13 +137,15 @@ export async function modifierPublicationProgrammee(req, res) {
 // ============================================================
 
 export async function creerPublicationProfesseur(req, res) {
-    const { typeContenu, texte, matiereId, dureeExpiration } = req.body;
+    const { titre, typeContenu, texte, matiereId, dureeExpiration } = req.body;
 
     if (!TYPES_VALIDES.includes(typeContenu)) {
         return res.status(400).json({ erreur: "Type de contenu invalide." });
     }
 
-    const fichier = req.file ? `/uploads/${req.file.filename}` : null;
+    const fichier = req.files?.fichier?.[0] ? `/uploads/${req.files.fichier[0].filename}` : null;
+    const photoCouverture = req.files?.photoCouverture?.[0] ? `/uploads/${req.files.photoCouverture[0].filename}` : null;
+
     if (typeContenu !== "texte" && !fichier) {
         return res.status(400).json({ erreur: "Un fichier est requis pour ce type de contenu." });
     }
@@ -159,9 +166,9 @@ export async function creerPublicationProfesseur(req, res) {
 
     const [resultat] = await pool.query(
         `INSERT INTO publications
-      (categorie, type_contenu, fichier, texte, auteur_professeur_id, matiere_id, date_publication, est_programmee, date_expiration)
-     VALUES ('bibliotheque', ?, ?, ?, ?, ?, ?, FALSE, ?)`,
-        [typeContenu, fichier || null, texte || null, req.utilisateur.id, matiereId, new Date(), dateExpiration]
+      (categorie, titre, type_contenu, fichier, photo_couverture, texte, auteur_professeur_id, matiere_id, date_publication, est_programmee, date_expiration)
+     VALUES ('bibliotheque', ?, ?, ?, ?, ?, ?, ?, ?, FALSE, ?)`,
+        [titre || null, typeContenu, fichier || null, photoCouverture || null, texte || null, req.utilisateur.id, matiereId, new Date(), dateExpiration]
     );
 
     // Prévenir l'administration qu'un prof a publié dans la bibliothèque.
